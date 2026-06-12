@@ -9,12 +9,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
   const params = await searchParams
   const ssoToken = params.sso
 
-  // SSO do Agregador — delega para route handler que pode setar cookie
   if (ssoToken) {
-    redirect(`/api/vic/sso-login?sso=${encodeURIComponent(ssoToken)}`)
+    redirect(`/api/sso?sso=${encodeURIComponent(ssoToken)}`)
   }
 
-  // Login normal por cookie
   const email = cookieStore.get('user_email')?.value
   if (email) {
     const [usuario] = await sql`
