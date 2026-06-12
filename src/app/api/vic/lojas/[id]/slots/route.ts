@@ -5,9 +5,9 @@ import { sql } from '@/lib/db'
 // Rota PÚBLICA — retorna horários disponíveis para o cliente agendar
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params
+  const { id } = await params
   const { searchParams } = new URL(req.url)
   const data = searchParams.get('data')
 
@@ -18,7 +18,6 @@ export async function GET(
   const dataObj = new Date(data)
   const diaSemana = ['dom','seg','ter','qua','qui','sex','sab'][dataObj.getDay()]
 
-  // Busca grade de horários da loja para esse dia
   const [horario] = await sql`
     SELECT hora_inicio, hora_fim, intervalo_min
     FROM horarios_loja
@@ -29,14 +28,13 @@ export async function GET(
   `
 
   if (!horario) {
-    return NextResponse.json({ slots: [] }) // loja fechada nesse dia
+    return NextResponse.json({ slots: [] })
   }
 
-  // Gera todos os slots do dia
   const slots: string[] = []
-  const [hIni, mIni] = horario.hora_inicio.split(':').map(Number)
-  const [hFim, mFim] = horario.hora_fim.split(':').map(Number)
-  const intervalo = horario.intervalo_min
+  const [hIni, mIni] = (horario.hora_inicio as string).split(':').map(Number)
+  const [hFim, mFim] = (horario.hora_fim as string).split(':').map(Number)
+  const intervalo = horario.intervalo_min as number
 
   let atual = hIni * 60 + mIni
   const fim  = hFim * 60 + mFim
@@ -48,7 +46,6 @@ export async function GET(
     atual += intervalo
   }
 
-  // Busca horários já ocupados
   const ocupados = await sql`
     SELECT hora::TEXT AS hora FROM agendamentos
     WHERE loja_id = ${id}
@@ -63,8 +60,8 @@ export async function GET(
   `
 
   const horasOcupadas = new Set([
-    ...ocupados.map((r: { hora: string }) => r.hora.slice(0,5)),
-    ...bloqueios.map((r: { hora: string }) => r.hora ? r.hora.slice(0,5) : '__dia__'),
+    ...ocupados.map((r: { hora: string }) => r.hora.slice(0, 5)),
+    ...bloqueios.map((r: { hora: string | null }) => r.hora ? r.hora.slice(0, 5) : '__dia__'),
   ])
 
   const diaBloqueado = horasOcupadas.has('__dia__')

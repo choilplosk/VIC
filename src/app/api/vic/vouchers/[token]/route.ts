@@ -5,9 +5,9 @@ import { sql } from '@/lib/db'
 // Rota PÚBLICA — o cliente acessa sem autenticação via link do voucher
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
-  const { token } = params
+  const { token } = await params
 
   const [voucher] = await sql`
     SELECT
@@ -24,9 +24,7 @@ export async function GET(
     return NextResponse.json({ error: 'Voucher não encontrado' }, { status: 404 })
   }
 
-  // Verifica expiração
   if (new Date(voucher.expira_em) < new Date()) {
-    // Atualiza status no banco se ainda não foi marcado
     await sql`
       UPDATE vouchers SET status = 'expirado'
       WHERE token = ${token} AND status = 'pendente'

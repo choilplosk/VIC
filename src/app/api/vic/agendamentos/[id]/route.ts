@@ -3,10 +3,9 @@ import { sql } from '@/lib/db'
 import { getUsuarioVIC } from '@/lib/auth'
 
 // PATCH /api/vic/agendamentos/[id]
-// Atualiza o status de um agendamento (atendente ou coordenadora)
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const usuario = await getUsuarioVIC(req)
   if (!usuario) {
@@ -17,7 +16,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
   }
 
-  const { id } = params
+  const { id } = await params
   const body   = await req.json()
   const { status, observacoes } = body
 
@@ -39,7 +38,6 @@ export async function PATCH(
     return NextResponse.json({ error: 'Agendamento não encontrado' }, { status: 404 })
   }
 
-  // Se cancelado, devolve o voucher para 'pendente' (permitir reagendamento)
   if (status === 'cancelado') {
     const [cfg] = await sql`SELECT reagendamentos_max FROM configuracoes_sistema WHERE id = 1`
     const max = cfg?.reagendamentos_max ?? 1
@@ -64,7 +62,6 @@ export async function PATCH(
     `
   }
 
-  // Se concluído, marca voucher como utilizado
   if (status === 'concluido') {
     await sql`
       UPDATE vouchers
