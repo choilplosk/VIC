@@ -9,48 +9,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
   const params = await searchParams
   const ssoToken = params.sso
 
-  // SSO do Agregador
+  // SSO do Agregador — delega para route handler que pode setar cookie
   if (ssoToken) {
-    let ssoEmail: string | null = null
-    let ssoPerfil: string | null = null
-
-    try {
-      const res = await fetch('https://www.boticarioniteroi.com.br/api/sso/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: ssoToken }),
-        cache: 'no-store',
-      })
-      const data = await res.json()
-      if (data.valid && data.email) {
-        const perfilMap: Record<string, string> = {
-          admin:   'coordenadora',
-          gerente: 'coordenadora',
-          loja:    'atendente',
-        }
-        ssoEmail = data.email
-        ssoPerfil = perfilMap[data.perfil] || 'atendente'
-      }
-    } catch (e) {
-      console.error('SSO error:', e)
-    }
-
-    if (ssoEmail && ssoPerfil) {
-      const store = await cookies()
-      store.set('user_email', ssoEmail, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 8,
-        path: '/',
-      })
-      const perfilRoutes: Record<string, string> = {
-        coordenadora: '/vic/dashboard',
-        atendente:    '/vic/agenda',
-        comercial:    '/vic/gerar',
-      }
-      redirect(perfilRoutes[ssoPerfil] || '/vic/agenda')
-    }
+    redirect(`/api/vic/sso-login?sso=${encodeURIComponent(ssoToken)}`)
   }
 
   // Login normal por cookie
