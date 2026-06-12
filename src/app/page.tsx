@@ -2,10 +2,40 @@ import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
 import { redirect } from 'next/navigation'
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ sso?: string }> }) {
   const cookieStore = await cookies()
-  const email = cookieStore.get('user_email')?.value
+  const params = await searchParams
+  const ssoToken = params.sso
 
+  // SSO do Agregador
+  if (ssoToken) {
+    try {
+      const res = await fetch('https://www.boticarioniteroi.com.br/api/sso/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: ssoToken }),
+        cache: 'no-store',
+      })
+      const data = await res.json()
+      if (data.valid && data.email) {
+        const perfilMap: Record<string, string> = {
+          admin:   'coordenadora',
+          gerente: 'coordenadora',
+          loja:    'atendente',
+        }
+        const vicPerfil = perfilMap[data.perfil] || 'atendente'
+
+        // Redirect com cookie via query param — Next.js não pode setar cookie em Server Component diretamente
+        // Usamos rota de API intermediária para setar o cookie
+        redirect(`/api/vic/sso-login?email=${encodeURIComponent(data.email)}&perfil=${vicPerfil}`)
+      }
+    } catch (e) {
+      console.error('SSO error:', e)
+    }
+  }
+
+  // Login normal por cookie
+  const email = cookieStore.get('user_email')?.value
   if (email) {
     const [usuario] = await sql`
       SELECT perfil FROM usuarios_vic
