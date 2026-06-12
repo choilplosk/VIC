@@ -110,7 +110,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
         Acesse o sistema pelo portal O Boticário Niterói ou utilize o link do seu voucher exclusivo.
       </p>
 
-      <a href=https://boticarioniteroi.com.br style={{
+      <a href="https://boticarioniteroi.com.br" style={{
         display: 'inline-block',
         background: '#8DB8A0',
         color: '#111111',
