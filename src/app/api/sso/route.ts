@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
 
     if (data.valid && data.email) {
       const perfilMap: Record<string, 'coordenadora' | 'atendente' | 'comercial'> = {
-        admin:   'coordenadora',
         gerente: 'coordenadora',
         loja:    'atendente',
       }
