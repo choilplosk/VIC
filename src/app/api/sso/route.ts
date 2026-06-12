@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { neon } from '@neondatabase/serverless'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,12 +21,24 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
 
     if (data.valid && data.email) {
-      const perfilMap: Record<string, string> = {
+      const perfilMap: Record<string, 'coordenadora' | 'atendente' | 'comercial'> = {
         admin:   'coordenadora',
         gerente: 'coordenadora',
         loja:    'atendente',
       }
       const vicPerfil = perfilMap[data.perfil] || 'atendente'
+
+      // Cria ou atualiza usuário na usuarios_vic
+      const sql = neon(process.env.DATABASE_URL!)
+      await sql`
+        INSERT INTO usuarios_vic (email, nome, perfil, ativo)
+        VALUES (${data.email}, ${data.name || data.email}, ${vicPerfil}, true)
+        ON CONFLICT (email) DO UPDATE SET
+          nome   = EXCLUDED.nome,
+          perfil = EXCLUDED.perfil,
+          ativo  = true,
+          atualizado_em = NOW()
+      `
 
       const perfilRoutes: Record<string, string> = {
         coordenadora: '/vic/dashboard',
