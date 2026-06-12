@@ -2,6 +2,8 @@ import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
 import { redirect } from 'next/navigation'
 
+export const dynamic = 'force-dynamic'
+
 export default async function Home({ searchParams }: { searchParams: Promise<{ sso?: string }> }) {
   const cookieStore = await cookies()
   const params = await searchParams
