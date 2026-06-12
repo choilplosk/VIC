@@ -34,7 +34,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
     }
 
     if (ssoEmail && ssoPerfil) {
-      redirect(`/api/vic/sso-login?email=${encodeURIComponent(ssoEmail)}&perfil=${ssoPerfil}`)
+      const store = await cookies()
+      store.set('user_email', ssoEmail, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 8,
+        path: '/',
+      })
+      const perfilRoutes: Record<string, string> = {
+        coordenadora: '/vic/dashboard',
+        atendente:    '/vic/agenda',
+        comercial:    '/vic/gerar',
+      }
+      redirect(perfilRoutes[ssoPerfil] || '/vic/agenda')
     }
   }
 
