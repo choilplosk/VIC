@@ -9,6 +9,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
 
   // SSO do Agregador
   if (ssoToken) {
+    let ssoEmail: string | null = null
+    let ssoPerfil: string | null = null
+
     try {
       const res = await fetch('https://www.boticarioniteroi.com.br/api/sso/verify', {
         method: 'POST',
@@ -23,14 +26,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
           gerente: 'coordenadora',
           loja:    'atendente',
         }
-        const vicPerfil = perfilMap[data.perfil] || 'atendente'
-
-        // Redirect com cookie via query param — Next.js não pode setar cookie em Server Component diretamente
-        // Usamos rota de API intermediária para setar o cookie
-        redirect(`/api/vic/sso-login?email=${encodeURIComponent(data.email)}&perfil=${vicPerfil}`)
+        ssoEmail = data.email
+        ssoPerfil = perfilMap[data.perfil] || 'atendente'
       }
     } catch (e) {
       console.error('SSO error:', e)
+    }
+
+    if (ssoEmail && ssoPerfil) {
+      redirect(`/api/vic/sso-login?email=${encodeURIComponent(ssoEmail)}&perfil=${ssoPerfil}`)
     }
   }
 
@@ -106,7 +110,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
         Acesse o sistema pelo portal O Boticário Niterói ou utilize o link do seu voucher exclusivo.
       </p>
 
-      <a href="https://boticarioniteroi.com.br" style={{
+      <a href=https://boticarioniteroi.com.br style={{
         display: 'inline-block',
         background: '#8DB8A0',
         color: '#111111',
