@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 
-// GET /api/vic/lojas/[id]/slots?data=2025-06-13
-// Rota PÚBLICA — retorna horários disponíveis para o cliente agendar
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -32,9 +30,9 @@ export async function GET(
   }
 
   const slots: string[] = []
-  const [hIni, mIni] = (horario.hora_inicio as string).split(':').map(Number)
-  const [hFim, mFim] = (horario.hora_fim as string).split(':').map(Number)
-  const intervalo = horario.intervalo_min as number
+  const [hIni, mIni] = String(horario.hora_inicio).split(':').map(Number)
+  const [hFim, mFim] = String(horario.hora_fim).split(':').map(Number)
+  const intervalo = Number(horario.intervalo_min)
 
   let atual = hIni * 60 + mIni
   const fim  = hFim * 60 + mFim
@@ -60,8 +58,8 @@ export async function GET(
   `
 
   const horasOcupadas = new Set([
-    ...ocupados.map((r: { hora: string }) => r.hora.slice(0, 5)),
-    ...bloqueios.map((r: { hora: string | null }) => r.hora ? r.hora.slice(0, 5) : '__dia__'),
+    ...ocupados.map((r) => String(r.hora ?? '').slice(0, 5)),
+    ...bloqueios.map((r) => r.hora ? String(r.hora).slice(0, 5) : '__dia__'),
   ])
 
   const diaBloqueado = horasOcupadas.has('__dia__')
