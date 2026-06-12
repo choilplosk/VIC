@@ -33,6 +33,7 @@ export async function GET(
   const [hIni, mIni] = String(horario.hora_inicio).split(':').map(Number)
   const [hFim, mFim] = String(horario.hora_fim).split(':').map(Number)
   const intervalo = Number(horario.intervalo_min)
+  void mFim
 
   let atual = hIni * 60 + mIni
   const fim  = hFim * 60 + mFim
@@ -57,10 +58,13 @@ export async function GET(
       AND data = ${data}
   `
 
-  const horasOcupadas = new Set([
-    ...ocupados.map((r) => String(r.hora ?? '').slice(0, 5)),
-    ...bloqueios.map((r) => r.hora ? String(r.hora).slice(0, 5) : '__dia__'),
-  ])
+  const horasOcupadas = new Set<string>()
+  for (const r of ocupados) {
+    horasOcupadas.add(String(r.hora ?? '').slice(0, 5))
+  }
+  for (const r of bloqueios) {
+    horasOcupadas.add(r.hora ? String(r.hora).slice(0, 5) : '__dia__')
+  }
 
   const diaBloqueado = horasOcupadas.has('__dia__')
 
