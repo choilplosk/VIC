@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 
+// v2
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
