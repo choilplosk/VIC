@@ -20,39 +20,37 @@ export default async function AgendaPage() {
   if (!usuario) redirect('/login')
   if (usuario.perfil === 'comercial') redirect('/vic/gerar')
 
-  // Coordenadora vê a primeira loja por padrão
-  const lojaId = usuario.loja_id
-    ? String(usuario.loja_id)
-    : await sql`SELECT id FROM lojas WHERE tipo = 'vic' AND ativa = TRUE ORDER BY nome LIMIT 1`
+  const isAdmin = usuario.perfil === 'coordenadora'
+
+  // Coordenadora não tem loja_id fixo — começa na primeira loja VIC
+  const lojaId = isAdmin
+    ? await sql`SELECT id FROM lojas WHERE tipo = 'vic' AND ativa = TRUE ORDER BY bairro, nome LIMIT 1`
         .then(r => String(r[0]?.id ?? ''))
+    : String(usuario.loja_id ?? '')
 
-  // Todas as lojas VIC (para coordenadora trocar)
-  const todasLojas = await sql`
-    SELECT id, nome, bairro FROM lojas
-    WHERE tipo = 'vic' AND ativa = TRUE
-    ORDER BY bairro, nome
-  `
+  // Todas as lojas VIC (coordenadora precisa do select; atendente recebe array com 1 item)
+  const todasLojas = isAdmin
+    ? await sql`SELECT id, nome, bairro FROM lojas WHERE tipo = 'vic' AND ativa = TRUE ORDER BY bairro, nome`
+    : await sql`SELECT id, nome, bairro FROM lojas WHERE id = ${String(usuario.loja_id)} LIMIT 1`
 
-  // Agendamentos de hoje
   const hoje = new Date().toISOString().split('T')[0]
+
   const agendamentos = await sql`
     SELECT * FROM v_agendamentos_completo
     WHERE loja_id = ${lojaId} AND data = ${hoje}
     ORDER BY hora ASC
   `
 
-  // Bloqueios de hoje
   const bloqueios = await sql`
     SELECT hora::TEXT AS hora FROM bloqueios_agenda
     WHERE loja_id = ${lojaId} AND data = ${hoje}
   `
 
-  // Stats do dia
   const [stats] = await sql`
     SELECT
-      COUNT(*)                                          AS total,
-      COUNT(*) FILTER (WHERE status = 'confirmado')    AS confirmados,
-      COUNT(*) FILTER (WHERE status = 'concluido')     AS concluidos,
+      COUNT(*)                                           AS total,
+      COUNT(*) FILTER (WHERE status = 'confirmado')     AS confirmados,
+      COUNT(*) FILTER (WHERE status = 'concluido')      AS concluidos,
       COUNT(*) FILTER (WHERE status = 'nao_compareceu') AS faltas
     FROM agendamentos
     WHERE loja_id = ${lojaId} AND data = ${hoje}
@@ -73,23 +71,23 @@ export default async function AgendaPage() {
         id: String(l.id), nome: String(l.nome), bairro: String(l.bairro)
       }))}
       agendamentosIniciais={agendamentos.map(a => ({
-        agendamento_id:    String(a.agendamento_id),
-        data:              String(a.data),
-        hora:              String(a.hora).slice(0, 5),
-        servico:           String(a.servico),
+        agendamento_id:     String(a.agendamento_id),
+        data:               String(a.data),
+        hora:               String(a.hora).slice(0, 5),
+        servico:            String(a.servico),
         agendamento_status: String(a.agendamento_status),
-        cliente_nome:      String(a.cliente_nome),
-        cliente_wpp:       String(a.cliente_wpp),
-        nivel:             String(a.nivel),
-        produtos:          a.produtos as string[],
-        empresa_nome:      a.empresa_nome ? String(a.empresa_nome) : null,
-        loja_nome:         String(a.loja_nome),
-        loja_wpp:          a.loja_wpp ? String(a.loja_wpp) : null,
-        comercial_nome:    a.comercial_nome ? String(a.comercial_nome) : null,
+        cliente_nome:       String(a.cliente_nome),
+        cliente_wpp:        String(a.cliente_wpp),
+        nivel:              String(a.nivel),
+        produtos:           a.produtos as string[],
+        empresa_nome:       a.empresa_nome ? String(a.empresa_nome) : null,
+        loja_nome:          String(a.loja_nome),
+        loja_wpp:           a.loja_wpp ? String(a.loja_wpp) : null,
+        comercial_nome:     a.comercial_nome ? String(a.comercial_nome) : null,
       }))}
       bloqueiosIniciais={bloqueios.map(b => String(b.hora ?? '').slice(0, 5))}
       statsIniciais={{
-        total:      Number(stats?.total ?? 0),
+        total:       Number(stats?.total ?? 0),
         confirmados: Number(stats?.confirmados ?? 0),
         concluidos:  Number(stats?.concluidos ?? 0),
         faltas:      Number(stats?.faltas ?? 0),
