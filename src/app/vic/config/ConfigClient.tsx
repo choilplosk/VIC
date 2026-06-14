@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import styles from './config.module.css'
+import VicNav from '../VicNav'
 
 interface Usuario { id: string; nome: string; perfil: string; loja_id: string | null }
 interface Tier { nivel: string; valor_minimo: number; duracao_minutos: number; servicos: string[]; ativo: boolean }
@@ -149,19 +150,7 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
 
   return (
     <div className={styles.root}>
-
-      {/* TOPBAR */}
-      <div className={styles.topbar}>
-        <div className={styles.topbarLeft}>
-          <span className={styles.brand}>VIC <em>·</em> Studio boti</span>
-          <span className={styles.tag}>Configurações</span>
-        </div>
-        <div className={styles.topbarUser}>
-          <div className={styles.avatar}>{iniciais}</div>
-          {usuario.nome.split(' ')[0]}
-          <span className={styles.perfilBadge}>{isAdmin ? 'Coordenadora' : 'Atendente'}</span>
-        </div>
-      </div>
+      <VicNav perfil={usuario.perfil} nome={usuario.nome} />
 
       <div className={styles.layout}>
 
