@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { cookies } from 'next/headers'
 import { sql } from './db'
 
 export interface UsuarioVIC {
@@ -10,13 +11,17 @@ export interface UsuarioVIC {
 }
 
 /**
- * Lê o token do portal (cookie ou header Authorization)
- * e retorna o usuário VIC correspondente.
+ * Lê o email do usuário via header x-user-email (portal SSO)
+ * ou via cookie user_email (login próprio do VIC).
  * Retorna null se não autenticado ou sem perfil VIC.
  */
 export async function getUsuarioVIC(req: NextRequest): Promise<UsuarioVIC | null> {
-  // O portal injeta o email do usuário autenticado via header após validar o token SSO
-  const email = req.headers.get('x-user-email')
+  // Tenta header primeiro (portal SSO), depois cookie (login próprio)
+  let email = req.headers.get('x-user-email')
+
+  if (!email) {
+    email = req.cookies.get('user_email')?.value ?? null
+  }
 
   if (!email) return null
 
