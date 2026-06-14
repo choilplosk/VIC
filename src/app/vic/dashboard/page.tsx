@@ -95,7 +95,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      usuario={{ id: String(usuario.id), nome: String(usuario.nome) }}
+      usuario={{ id: String(usuario.id), nome: String(usuario.nome), perfil: String(usuario.perfil) }}
       kpisIniciais={{
         vouchers_emitidos:      Number(kpis?.vouchers_emitidos ?? 0),
         agendamentos_realizados: Number(kpis?.agendamentos_realizados ?? 0),
