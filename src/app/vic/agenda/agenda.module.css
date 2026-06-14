@@ -229,28 +229,12 @@
 .reagendarConfirmar:hover { opacity: 0.88; }
 .reagendarConfirmar:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* Botão + nos slots vazios */
 .slotNovoBtn {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 24px; height: 24px; border-radius: 50%;
-  background: transparent; border: 1.5px dashed #ccc;
-  color: #bbb; font-size: 16px; line-height: 1; cursor: pointer;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: transparent; border: 1.5px dashed #d0d0d0;
+  color: #ccc; font-size: 16px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s; opacity: 0;
+  transition: all 0.15s;
 }
-.slot:hover .slotNovoBtn { opacity: 1; border-color: #3d8a65; color: #3d8a65; }
-
-/* Formulário de novo agendamento */
-.novoForm { display: flex; flex-direction: column; gap: 6px; }
-.novoLabel { font-size: 11px; color: #999; margin-top: 8px; }
-.novoInput {
-  background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px;
-  padding: 9px 11px; font-size: 13px; color: #111;
-  font-family: 'Inter', sans-serif; outline: none; width: 100%;
-}
-.novoInput:focus { border-color: #3d8a65; }
-.novoInput::placeholder { color: #bbb; }
-.novoErro {
-  background: #fff0f0; border: 1px solid #f5c6c6; border-radius: 6px;
-  padding: 8px 10px; font-size: 12px; color: #c0392b; margin-top: 4px;
-}
+.slotNovoBtn:hover { border-color: #3d8a65; color: #3d8a65; background: #f0faf5; }
