@@ -82,7 +82,7 @@ export default function GeradorClient({ usuario, tiers, vouchersIniciais }: Prop
         }),
       })
       const data = await res.json()
-      console.log('[VIC] resposta API voucher:', JSON.stringify(data))
+      console.log('[VIC gerar] resposta:', JSON.stringify(data))
       const voucherToken = data.voucher?.token ?? data.token
       if (voucherToken) {
         const url = `${window.location.origin}/vic/${voucherToken}`
@@ -226,19 +226,20 @@ export default function GeradorClient({ usuario, tiers, vouchersIniciais }: Prop
 
             {linkGerado && (
               <div className={styles.linkBox}>
-                <div className={styles.linkTitle}>✓ Voucher gerado — copie o link abaixo</div>
+                <div className={styles.linkTitle}>✓ Voucher gerado!</div>
                 <div className={styles.linkFieldRow}>
                   <input
                     className={styles.linkField}
                     readOnly
                     value={linkGerado}
                     onFocus={e => e.target.select()}
+                    onClick={e => (e.target as HTMLInputElement).select()}
                   />
                   <button className={styles.btnCopiar} onClick={copiar}>
                     {copiado ? '✓ Copiado!' : 'Copiar'}
                   </button>
                 </div>
-                <button className={styles.btnWpp} onClick={abrirWpp}>
+                <button className={styles.btnWpp} style={{width:'100%',marginTop:8}} onClick={abrirWpp}>
                   Enviar pelo WhatsApp
                 </button>
               </div>
