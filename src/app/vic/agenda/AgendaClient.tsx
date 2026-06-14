@@ -453,11 +453,6 @@ export default function AgendaClient({
   )
 }
 
-function DetalheRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.detalheRow}>
-      <span className={styles.detalheKey}>{label}</span>
-      <span className={styles.detalheVal}>{value}</span>
       {modalBloquear && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'#fff',borderRadius:12,padding:24,width:340,boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
@@ -490,6 +485,16 @@ function DetalheRow({ label, value }: { label: string; value: string }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+
+function DetalheRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.detalheRow}>
+      <span className={styles.detalheKey}>{label}</span>
+      <span className={styles.detalheVal}>{value}</span>
     </div>
   )
 }
