@@ -21,30 +21,42 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
 
     if (data.valid && data.email) {
-      const perfilMap: Record<string, 'coordenadora' | 'atendente' | 'comercial'> = {
+      const sql = neon(process.env.DATABASE_URL!)
+
+      // Perfil padrão apenas para novos usuários — nunca sobrescreve usuários existentes
+      const perfilMap: Record<string, string> = {
         gerente: 'coordenadora',
+        admin:   'coordenadora',
         loja:    'atendente',
       }
-      const vicPerfil = perfilMap[data.perfil] || 'atendente'
+      const perfilPadrao = perfilMap[data.perfil] || 'atendente'
 
-      // Cria ou atualiza usuário na usuarios_vic
-      const sql = neon(process.env.DATABASE_URL!)
+      // Cria usuário se não existir; se já existir, apenas atualiza nome e ativo
+      // NUNCA sobrescreve o perfil de usuários existentes
       await sql`
         INSERT INTO usuarios_vic (email, nome, perfil, ativo)
-        VALUES (${data.email}, ${data.name || data.email}, ${vicPerfil}, true)
+        VALUES (${data.email}, ${data.name || data.email}, ${perfilPadrao}, true)
         ON CONFLICT (email) DO UPDATE SET
-          nome   = EXCLUDED.nome,
-          perfil = EXCLUDED.perfil,
-          ativo  = true,
+          nome       = EXCLUDED.nome,
+          ativo      = true,
           atualizado_em = NOW()
       `
+
+      // Lê o perfil real do banco (pode ter sido alterado manualmente)
+      const [usuario] = await sql`
+        SELECT perfil::text AS perfil FROM usuarios_vic
+        WHERE email = ${data.email} AND ativo = TRUE
+        LIMIT 1
+      `
+
+      const perfil = String(usuario?.perfil ?? perfilPadrao)
 
       const perfilRoutes: Record<string, string> = {
         coordenadora: '/vic/dashboard',
         atendente:    '/vic/agenda',
         comercial:    '/vic/gerar',
       }
-      const dest = perfilRoutes[vicPerfil] || '/vic/agenda'
+      const dest = perfilRoutes[perfil] || '/vic/agenda'
 
       const response = NextResponse.redirect(new URL(dest, req.url))
       response.cookies.set('user_email', data.email, {
