@@ -28,7 +28,6 @@ export default async function AgendaPage() {
     ORDER BY bairro, nome
   `
 
-  // Coordenadora começa na primeira loja; atendente fica na sua loja
   const lojaId = isAdmin
     ? String(todasLojas[0]?.id ?? '')
     : String(usuario.loja_id ?? '')
@@ -37,13 +36,13 @@ export default async function AgendaPage() {
 
   const agendamentos = await sql`
     SELECT * FROM v_agendamentos_completo
-    WHERE loja_id = ${lojaId}::uuid AND data = ${hoje}::date
+    WHERE loja_id = ${lojaId} AND data = ${hoje}
     ORDER BY hora ASC
   `
 
   const bloqueios = await sql`
     SELECT hora::TEXT AS hora FROM bloqueios_agenda
-    WHERE loja_id = ${lojaId}::uuid AND data = ${hoje}::date
+    WHERE loja_id = ${lojaId} AND data = ${hoje}
   `
 
   const [stats] = await sql`
@@ -53,7 +52,7 @@ export default async function AgendaPage() {
       COUNT(*) FILTER (WHERE status = 'concluido')      AS concluidos,
       COUNT(*) FILTER (WHERE status = 'nao_compareceu') AS faltas
     FROM agendamentos
-    WHERE loja_id = ${lojaId}::uuid AND data = ${hoje}::date
+    WHERE loja_id = ${lojaId} AND data = ${hoje}
   `
 
   return (
