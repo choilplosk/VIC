@@ -23,7 +23,7 @@ const DIAS_LABEL: Record<string, string> = { seg:'Seg', ter:'Ter', qua:'Qua', qu
 const PERFIS = ['admin','loja','comercial','atendente','coordenadora']
 
 export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, lojasIniciais, usuariosIniciais, horariosIniciais }: Props) {
-  const isAdmin = usuario.perfil === 'admin' || usuario.perfil === 'coordenadora'
+  const isAdmin = usuario.perfil === 'coordenadora'
 
   // Abas disponíveis por perfil
   const navItems = [
@@ -159,7 +159,7 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
         <div className={styles.topbarUser}>
           <div className={styles.avatar}>{iniciais}</div>
           {usuario.nome.split(' ')[0]}
-          <span className={styles.perfilBadge}>{isAdmin ? 'Admin' : 'Loja'}</span>
+          <span className={styles.perfilBadge}>{isAdmin ? 'Coordenadora' : 'Atendente'}</span>
         </div>
       </div>
 
