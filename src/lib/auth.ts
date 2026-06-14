@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { cookies } from 'next/headers'
 import { sql } from './db'
 
 export interface UsuarioVIC {
@@ -10,15 +9,11 @@ export interface UsuarioVIC {
   loja_id: string | null
 }
 
-/**
- * Lê o email do usuário via header x-user-email (portal SSO)
- * ou via cookie user_email (login próprio do VIC).
- * Retorna null se não autenticado ou sem perfil VIC.
- */
 export async function getUsuarioVIC(req: NextRequest): Promise<UsuarioVIC | null> {
-  // Tenta header primeiro (portal SSO), depois cookie (login próprio)
+  // Header do portal SSO tem prioridade
   let email = req.headers.get('x-user-email')
 
+  // Cookie do login próprio do VIC
   if (!email) {
     email = req.cookies.get('user_email')?.value ?? null
   }
@@ -26,10 +21,9 @@ export async function getUsuarioVIC(req: NextRequest): Promise<UsuarioVIC | null
   if (!email) return null
 
   const rows = await sql`
-    SELECT id, email, nome, perfil, loja_id
+    SELECT id, email, nome, perfil::text AS perfil, loja_id::text AS loja_id
     FROM usuarios_vic
-    WHERE email = ${email}
-      AND ativo = TRUE
+    WHERE email = ${email} AND ativo = TRUE
     LIMIT 1
   `
 
@@ -38,10 +32,6 @@ export async function getUsuarioVIC(req: NextRequest): Promise<UsuarioVIC | null
   return rows[0] as UsuarioVIC
 }
 
-/**
- * Garante que o usuário tem o perfil mínimo exigido.
- * Ordem de permissão: coordenadora > atendente > comercial
- */
 export function temPermissao(
   usuario: UsuarioVIC,
   perfilMinimo: 'comercial' | 'atendente' | 'coordenadora'
