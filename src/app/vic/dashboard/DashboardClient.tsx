@@ -21,6 +21,7 @@ interface Recente {
   agendamento_id: string; cliente_nome: string; empresa_nome: string | null
   servico: string; nivel: string; agendamento_status: string; voucher_status: string
   loja_nome: string; loja_bairro: string; criado_em: string
+  data?: string; hora?: string
 }
 
 interface Evolucao { semana: string; vouchers: number; agendamentos: number }
@@ -146,10 +147,10 @@ export default function DashboardClient({
 
         {/* KPIS */}
         <div className={styles.kpis}>
-          <KpiCard label="Vouchers emitidos"      value={kpis.vouchers_emitidos}      delta="+18%" up />
-          <KpiCard label="Agendamentos realizados" value={kpis.agendamentos_realizados} delta="+12%" up />
-          <KpiCard label="Taxa de conversão"       value={`${kpis.taxa_conversao}%`}  delta="-3pp" up={false} />
-          <KpiCard label="Vouchers expirados"      value={kpis.vouchers_expirados}     delta="+5"   up={false} />
+          <KpiCard label="Vouchers emitidos"      value={kpis.vouchers_emitidos} />
+          <KpiCard label="Agendamentos realizados" value={kpis.agendamentos_realizados} />
+          <KpiCard label="Taxa de conversão"       value={`${kpis.taxa_conversao}%`} />
+          <KpiCard label="Vouchers expirados"      value={kpis.vouchers_expirados} />
         </div>
 
         {/* MID */}
@@ -228,6 +229,7 @@ export default function DashboardClient({
                   <div className={styles.recenteInfo}>
                     <p className={styles.recenteNome}>{r.cliente_nome}</p>
                     <p className={styles.recenteMeta}>{r.empresa_nome ?? 'Sem empresa'} · {r.servico}</p>
+                    <p className={styles.recenteData}>{r.data ? `${r.data} · ${r.hora}` : formatDate(r.criado_em)}</p>
                   </div>
                   <span className={styles.recenteLoja}>{r.loja_nome}</span>
                   <span className={styles.pill} style={{ background: tn.bg, color: tn.color }}>
@@ -247,14 +249,11 @@ export default function DashboardClient({
   )
 }
 
-function KpiCard({ label, value, delta, up }: { label: string; value: string | number; delta: string; up: boolean }) {
+function KpiCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className={styles.kpi}>
       <p className={styles.kpiLabel}>{label}</p>
       <p className={styles.kpiVal}>{value}</p>
-      <p className={styles.kpiDelta} style={{ color: up ? '#3d8a65' : '#E24B4A' }}>
-        {up ? '↑' : '↓'} {delta}
-      </p>
     </div>
   )
 }
