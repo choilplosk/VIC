@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import VicNav from '../VicNav'
 import styles from './gerar.module.css'
 
 interface Usuario { id: string; nome: string; perfil: string }
@@ -13,14 +14,9 @@ interface Tier {
 }
 
 interface VoucherHistorico {
-  id: string
-  cliente_nome: string
-  empresa_nome: string | null
-  nivel: string
-  status: string
-  expira_em: string
-  criado_em: string
-  comercial_nome: string | null
+  id: string; cliente_nome: string; empresa_nome: string | null
+  nivel: string; status: string; expira_em: string
+  criado_em: string; comercial_nome: string | null
 }
 
 interface Props {
@@ -32,19 +28,16 @@ interface Props {
 const TIER_LABEL: Record<string, string> = {
   bronze: 'Bronze', prata: 'Prata', ouro: 'Ouro', diamante: 'Diamante'
 }
-
 const TIER_COLOR: Record<string, string> = {
   bronze: '#CD7F32', prata: '#9a9a9a', ouro: '#C9A96E', diamante: '#4a90c4'
 }
-
 const STATUS_LABEL: Record<string, string> = {
   pendente: 'Aguardando', agendado: 'Agendado',
   utilizado: 'Utilizado', expirado: 'Expirado', cancelado: 'Cancelado'
 }
-
-const STATUS_CLASS: Record<string, string> = {
-  pendente: 'statusPendente', agendado: 'statusAgendado',
-  utilizado: 'statusUtilizado', expirado: 'statusExpirado', cancelado: 'statusExpirado'
+const STATUS_COLOR: Record<string, string> = {
+  pendente: '#C9A96E', agendado: '#3d8a65',
+  utilizado: '#4a90c4', expirado: '#bbb', cancelado: '#bbb'
 }
 
 function formatDate(iso: string) {
@@ -52,36 +45,25 @@ function formatDate(iso: string) {
 }
 
 export default function GeradorClient({ usuario, tiers, vouchersIniciais }: Props) {
-  const [aba, setAba]             = useState<'novo'|'historico'>('novo')
-  const [nome, setNome]           = useState('')
-  const [wpp, setWpp]             = useState('')
-  const [empresa, setEmpresa]     = useState('')
-  const [valor, setValor]         = useState('')
-  const [produtos, setProdutos]   = useState<string[]>([])
-  const [prodInput, setProdInput] = useState('')
-  const [tier, setTier]           = useState('')
-  const [loading, setLoading]     = useState(false)
+  const [aba, setAba]           = useState<'novo' | 'historico'>('novo')
+  const [nome, setNome]         = useState('')
+  const [empresa, setEmpresa]   = useState('')
+  const [nivel, setNivel]       = useState('')
+  const [servico, setServico]   = useState('')
+  const [valor, setValor]       = useState('')
+  const [loading, setLoading]   = useState(false)
   const [linkGerado, setLinkGerado] = useState('')
-  const [copiado, setCopiado]     = useState(false)
-  const [vouchers, setVouchers]   = useState(vouchersIniciais)
+  const [copiado, setCopiado]   = useState(false)
+  const [vouchers, setVouchers] = useState(vouchersIniciais)
 
-  const iniciais = usuario.nome.split(' ').map(n => n[0]).slice(0, 2).join('')
-  const tierSel  = tiers.find(t => t.nivel === tier)
-  const valido   = nome && tier && valor
+  const tierSel = tiers.find(t => t.nivel === nivel)
+  const valido  = nome.trim() && empresa.trim() && nivel && servico && valor
 
-  function addProduto() {
-    if (!prodInput.trim()) return
-    setProdutos(p => [...p, prodInput.trim()])
-    setProdInput('')
-  }
-
-  function removeProduto(i: number) {
-    setProdutos(p => p.filter((_, idx) => idx !== i))
-  }
-
-  function limpar() {
-    setNome(''); setWpp(''); setEmpresa(''); setValor('')
-    setProdutos([]); setProdInput(''); setTier(''); setLinkGerado('')
+  function selecionarNivel(n: string) {
+    setNivel(n)
+    setServico('')
+    const t = tiers.find(t => t.nivel === n)
+    setValor(t ? String(t.valor_minimo) : '')
   }
 
   async function gerar() {
@@ -92,246 +74,216 @@ export default function GeradorClient({ usuario, tiers, vouchersIniciais }: Prop
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cliente_nome: nome,
-          cliente_wpp:  wpp.replace(/\D/g, ''),
-          empresa_nome: empresa || null,
-          produtos,
-          valor_compra: parseFloat(valor),
-          nivel:        tier,
+          cliente_nome:  nome.trim(),
+          cliente_wpp:   '',
+          empresa_nome:  empresa.trim(),
+          nivel,
+          produtos:      [servico],
+          valor_compra:  parseFloat(valor),
         }),
       })
       const data = await res.json()
-      if (res.ok) {
-        setLinkGerado(data.url)
-        // Adiciona ao histórico local
-        setVouchers(v => [{
-          id: data.voucher.id,
-          cliente_nome: nome,
-          empresa_nome: empresa || null,
-          nivel: tier,
-          status: 'pendente',
-          expira_em: data.voucher.expira_em,
-          criado_em: data.voucher.criado_em,
+      if (data.url || data.voucher) {
+        const url = data.url ?? `${window.location.origin}/vic/${data.voucher?.token}`
+        setLinkGerado(url)
+        setVouchers(prev => [{
+          id:            data.voucher?.id ?? '',
+          cliente_nome:  nome.trim(),
+          empresa_nome:  empresa.trim(),
+          nivel,
+          status:        'pendente',
+          expira_em:     data.voucher?.expira_em ?? '',
+          criado_em:     new Date().toISOString(),
           comercial_nome: usuario.nome,
-        }, ...v])
+        }, ...prev])
+        setNome(''); setEmpresa(''); setNivel(''); setServico(''); setValor('')
       }
     } finally {
       setLoading(false)
     }
   }
 
-  async function copiar() {
-    await navigator.clipboard.writeText(linkGerado)
+  function copiar() {
+    navigator.clipboard.writeText(linkGerado)
     setCopiado(true)
     setTimeout(() => setCopiado(false), 2000)
   }
 
-  function enviarWpp() {
-    const num = wpp.replace(/\D/g, '')
+  function abrirWpp() {
     const msg = encodeURIComponent(
-      `Olá, ${nome}! 🌿 Sua experiência exclusiva no Studio Boti está pronta.\n` +
-      `Acesse seu voucher e agende seu atendimento: ${linkGerado}`
+      `Olá! 🌿 Você recebeu um voucher exclusivo do Studio Boti.\n\nAcesse e agende seu atendimento:\n${linkGerado}`
     )
-    const url = num ? `https://wa.me/55${num}?text=${msg}` : `https://wa.me/?text=${msg}`
-    window.open(url, '_blank')
+    window.open(`https://wa.me/?text=${msg}`, '_blank')
   }
 
   return (
     <div className={styles.root}>
-
-      {/* TOPBAR */}
-      <div className={styles.topbar}>
-        <div className={styles.topbarLeft}>
-          <span className={styles.brand}>VIC <em>·</em> Studio boti</span>
-          <span className={styles.tag}>Comercial</span>
-        </div>
-        <div className={styles.topbarUser}>
-          <div className={styles.avatar}>{iniciais}</div>
-          {usuario.nome.split(' ')[0]}
-        </div>
-      </div>
+      <VicNav perfil={usuario.perfil} nome={usuario.nome} />
 
       <div className={styles.body}>
-
-        {/* ABAS */}
-        <div className={styles.tabs}>
-          <button className={`${styles.tab} ${aba === 'novo' ? styles.tabActive : ''}`} onClick={() => setAba('novo')}>
+        <div className={styles.abas}>
+          <button
+            className={`${styles.aba} ${aba === 'novo' ? styles.abaOn : ''}`}
+            onClick={() => setAba('novo')}
+          >
             Novo voucher
           </button>
-          <button className={`${styles.tab} ${aba === 'historico' ? styles.tabActive : ''}`} onClick={() => setAba('historico')}>
+          <button
+            className={`${styles.aba} ${aba === 'historico' ? styles.abaOn : ''}`}
+            onClick={() => setAba('historico')}
+          >
             Histórico ({vouchers.length})
           </button>
         </div>
 
-        {/* ABA NOVO */}
-        {aba === 'novo' && !linkGerado && (
-          <>
-            <h1 className={styles.pageTitle}>Gerar voucher VIC</h1>
-            <p className={styles.pageSub}>Preencha os dados da cliente e da venda para gerar o link exclusivo.</p>
+        {aba === 'novo' && (
+          <div className={styles.card}>
 
-            {/* DADOS DA CLIENTE */}
-            <div className={styles.card}>
-              <div className={styles.cardTitle}>
-                <span>👤</span> Dados da cliente
-              </div>
-              <div className={styles.grid2}>
+            <div className={styles.section}>
+              <div className={styles.sectionLabel}>Cliente</div>
+              <div className={styles.fieldRow}>
                 <div className={styles.field}>
                   <label className={styles.label}>Nome completo</label>
-                  <input className={styles.input} placeholder="Ex: Maria Clara" value={nome} onChange={e => setNome(e.target.value)} />
+                  <input
+                    className={styles.input}
+                    placeholder="Nome da cliente"
+                    value={nome}
+                    onChange={e => setNome(e.target.value)}
+                  />
                 </div>
                 <div className={styles.field}>
-                  <label className={styles.label}>WhatsApp</label>
-                  <input className={styles.input} type="tel" placeholder="(21) 9 0000-0000" value={wpp} onChange={e => setWpp(e.target.value)} />
-                </div>
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>Empresa de origem</label>
-                <input className={styles.input} placeholder="Ex: Prefeitura de Niterói" value={empresa} onChange={e => setEmpresa(e.target.value)} />
-              </div>
-            </div>
-
-            {/* DADOS DA VENDA */}
-            <div className={styles.card}>
-              <div className={styles.cardTitle}>
-                <span>🛍</span> Dados da venda
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>Valor total da compra (R$)</label>
-                <input className={styles.input} type="number" placeholder="Ex: 150.00" value={valor} onChange={e => setValor(e.target.value)} />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>Produtos comprados</label>
-                <div className={styles.produtosWrap}>
-                  {produtos.map((p, i) => (
-                    <span key={i} className={styles.prodTag}>
-                      {p}
-                      <button onClick={() => removeProduto(i)} aria-label={`Remover ${p}`}>✕</button>
-                    </span>
-                  ))}
-                </div>
-                <div className={styles.addRow}>
+                  <label className={styles.label}>Empresa</label>
                   <input
-                    className={styles.addInput}
-                    placeholder="Digite o produto e pressione +"
-                    value={prodInput}
-                    onChange={e => setProdInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addProduto()}
+                    className={styles.input}
+                    placeholder="Empresa de origem"
+                    value={empresa}
+                    onChange={e => setEmpresa(e.target.value)}
                   />
-                  <button className={styles.addBtn} onClick={addProduto}>+ Adicionar</button>
                 </div>
               </div>
             </div>
 
-            {/* NÍVEL */}
-            <div className={styles.card}>
-              <div className={styles.cardTitle}>
-                <span>💎</span> Nível do voucher
-              </div>
-              <p className={styles.label} style={{ marginBottom: 8 }}>Selecione conforme o valor da compra</p>
+            <div className={styles.section}>
+              <div className={styles.sectionLabel}>Serviço</div>
               <div className={styles.tierGrid}>
                 {tiers.map(t => (
                   <div
                     key={t.nivel}
-                    className={`${styles.tierBtn} ${tier === t.nivel ? styles.tierSel : ''}`}
-                    style={tier === t.nivel ? { borderColor: TIER_COLOR[t.nivel] } : {}}
-                    onClick={() => setTier(t.nivel)}
+                    className={`${styles.tierCard} ${nivel === t.nivel ? styles.tierSel : ''}`}
+                    style={{ borderTopColor: TIER_COLOR[t.nivel] }}
+                    onClick={() => selecionarNivel(t.nivel)}
                   >
-                    <div className={styles.tierIcon} style={{ color: TIER_COLOR[t.nivel] }}>◆</div>
-                    <div className={styles.tierName}>{TIER_LABEL[t.nivel]}</div>
-                    <div className={styles.tierMin}>a partir de R$ {t.valor_minimo.toLocaleString('pt-BR')}</div>
-                    <div className={styles.tierSvc}>{t.servicos.join(', ')}</div>
+                    <div className={styles.tierNome} style={{ color: TIER_COLOR[t.nivel] }}>
+                      ◆ {TIER_LABEL[t.nivel]}
+                    </div>
+                    <div className={styles.tierSvcs}>
+                      {t.servicos.slice(0, 3).map((s, i) => (
+                        <span key={i} className={styles.tierSvcTag}>{s}</span>
+                      ))}
+                      {t.servicos.length > 3 && (
+                        <span className={styles.tierSvcMore}>+{t.servicos.length - 3}</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {tierSel && tierSel.servicos.length > 0 && (
+                <div className={styles.svcSelectWrap}>
+                  <label className={styles.label}>Serviço específico</label>
+                  <select
+                    className={styles.svcSelect}
+                    value={servico}
+                    onChange={e => setServico(e.target.value)}
+                  >
+                    <option value="">Selecione o serviço...</option>
+                    {tierSel.servicos.map((s, i) => (
+                      <option key={i} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {nivel && (
+                <div className={styles.valorWrap}>
+                  <label className={styles.label}>Valor do voucher</label>
+                  <div className={styles.valorRow}>
+                    <span className={styles.valorPrefix}>R$</span>
+                    <input
+                      className={styles.valorInput}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={valor}
+                      onChange={e => setValor(e.target.value)}
+                    />
+                  </div>
+                  <p className={styles.valorNota}>Valor exibido ao cliente como benefício recebido</p>
+                </div>
+              )}
             </div>
 
-            {/* PREVIEW */}
-            {valido && (
-              <div className={styles.preview}>
-                <p className={styles.previewLabel}>Prévia do voucher</p>
-                <PreviewRow label="Cliente"        value={nome} />
-                <PreviewRow label="Empresa"        value={empresa || '—'} />
-                <PreviewRow label="Valor da compra" value={valor ? `R$ ${parseFloat(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'} />
-                <PreviewRow label="Nível"           value={tierSel ? `${TIER_LABEL[tier]} · ${tierSel.servicos[0]}` : '—'} />
-                <PreviewRow label="Validade"        value="30 dias a partir de hoje" />
+            {linkGerado && (
+              <div className={styles.linkBox}>
+                <div className={styles.linkTitle}>✓ Voucher gerado!</div>
+                <div className={styles.linkUrl}>{linkGerado}</div>
+                <div className={styles.linkBtns}>
+                  <button className={styles.btnCopiar} onClick={copiar}>
+                    {copiado ? '✓ Copiado!' : 'Copiar link'}
+                  </button>
+                  <button className={styles.btnWpp} onClick={abrirWpp}>
+                    Enviar pelo WhatsApp
+                  </button>
+                </div>
               </div>
             )}
 
-            <div className={styles.actions}>
-              <button className={styles.btnPrimary} disabled={!valido || loading} onClick={gerar}>
-                ✦ {loading ? 'Gerando...' : 'Gerar voucher'}
-              </button>
-              <button className={styles.btnSecondary} onClick={limpar}>↺ Limpar</button>
-            </div>
-          </>
-        )}
-
-        {/* MODAL DE SUCESSO */}
-        {aba === 'novo' && linkGerado && (
-          <div className={styles.successWrap}>
-            <div className={styles.successBanner}>
-              <span className={styles.successIcon}>✓</span>
-              <div>
-                <p className={styles.successTitle}>Voucher gerado com sucesso!</p>
-                <p className={styles.successSub}>O link exclusivo está pronto para ser enviado.</p>
-              </div>
-            </div>
-            <p className={styles.label}>Link do voucher</p>
-            <div className={styles.linkBox}>
-              <span className={styles.linkText}>{linkGerado}</span>
-              <button className={styles.copyBtn} onClick={copiar}>
-                {copiado ? '✓ Copiado' : '⎘ Copiar'}
-              </button>
-            </div>
-            <div className={styles.actions} style={{ marginTop: '1rem' }}>
-              <button className={styles.btnWpp} onClick={enviarWpp}>
-                💬 Enviar no WhatsApp
-              </button>
-              <button className={styles.btnSecondary} onClick={limpar}>
-                + Novo voucher
-              </button>
-            </div>
+            <button className={styles.btnGerar} disabled={!valido || loading} onClick={gerar}>
+              {loading ? 'Gerando...' : 'Gerar link do voucher'}
+            </button>
           </div>
         )}
 
-        {/* ABA HISTÓRICO */}
         {aba === 'historico' && (
-          <>
-            <h1 className={styles.pageTitle}>Vouchers emitidos</h1>
-            <p className={styles.pageSub}>Acompanhe os vouchers gerados pela sua equipe.</p>
-            {vouchers.length === 0 ? (
-              <p className={styles.empty}>Nenhum voucher emitido ainda.</p>
-            ) : (
-              vouchers.map(v => (
-                <div key={v.id} className={styles.histItem}>
-                  <div className={styles.histAvatar}>
-                    {v.cliente_nome.split(' ').map(n => n[0]).slice(0, 2).join('')}
-                  </div>
-                  <div className={styles.histInfo}>
-                    <p className={styles.histNome}>{v.cliente_nome}</p>
-                    <p className={styles.histMeta}>
-                      {v.empresa_nome ?? 'Sem empresa'} · {TIER_LABEL[v.nivel]} · {formatDate(v.criado_em)}
-                    </p>
-                  </div>
-                  <span className={`${styles.statusBadge} ${styles[STATUS_CLASS[v.status]]}`}>
-                    {STATUS_LABEL[v.status]}
-                  </span>
-                </div>
-              ))
-            )}
-          </>
+          <div className={styles.card}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Empresa</th>
+                  <th>Nível</th>
+                  <th>Comercial</th>
+                  <th>Expira</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vouchers.length === 0 && (
+                  <tr><td colSpan={6} className={styles.vazio}>Nenhum voucher emitido ainda.</td></tr>
+                )}
+                {vouchers.map(v => (
+                  <tr key={v.id}>
+                    <td className={styles.tdNome}>{v.cliente_nome}</td>
+                    <td className={styles.tdSub}>{v.empresa_nome ?? '—'}</td>
+                    <td>
+                      <span style={{ color: TIER_COLOR[v.nivel], fontWeight: 500, fontSize: 12 }}>
+                        {TIER_LABEL[v.nivel] ?? v.nivel}
+                      </span>
+                    </td>
+                    <td className={styles.tdSub}>{v.comercial_nome ?? '—'}</td>
+                    <td className={styles.tdSub}>{v.expira_em ? formatDate(v.expira_em) : '—'}</td>
+                    <td>
+                      <span className={styles.status} style={{ color: STATUS_COLOR[v.status] ?? '#888' }}>
+                        {STATUS_LABEL[v.status] ?? v.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-
       </div>
-    </div>
-  )
-}
-
-function PreviewRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.previewRow}>
-      <span className={styles.previewKey}>{label}</span>
-      <span className={styles.previewVal}>{value}</span>
     </div>
   )
 }
