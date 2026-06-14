@@ -202,7 +202,7 @@ export default function AgendaClient({
       <div className={styles.topbar}>
         <div className={styles.topbarLeft}>
           <span className={styles.brand}>VIC <em>·</em> Studio boti</span>
-          {usuario.perfil === 'coordenadora' || usuario.perfil === 'admin' ? (
+          {usuario.perfil === 'coordenadora' ? (
             <select className={styles.lojaSelect} value={lojaId} onChange={e => trocarLoja(e.target.value)}>
               {todasLojas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
             </select>
