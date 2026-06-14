@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import styles from './agenda.module.css'
+import VicNav from '../VicNav'
 
 interface Usuario {
   id: string; nome: string; perfil: string
@@ -198,24 +199,15 @@ export default function AgendaClient({
   return (
     <div className={styles.root}>
 
-      {/* TOPBAR */}
-      <div className={styles.topbar}>
-        <div className={styles.topbarLeft}>
-          <span className={styles.brand}>VIC <em>·</em> Studio boti</span>
-          {usuario.perfil === 'coordenadora' ? (
-            <select className={styles.lojaSelect} value={lojaId} onChange={e => trocarLoja(e.target.value)}>
-              {todasLojas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
-            </select>
-          ) : (
-            <span className={styles.lojaTag}>{lojaAtual.nome}</span>
-          )}
-        </div>
-        <div className={styles.topbarUser}>
-          <div className={styles.avatar}>
-            {usuario.nome.split(' ').map(n => n[0]).slice(0, 2).join('')}
-          </div>
-          {usuario.nome.split(' ')[0]}
-        </div>
+      <VicNav perfil={usuario.perfil} nome={usuario.nome} />
+      <div className={styles.lojaBar}>
+        {usuario.perfil === 'coordenadora' ? (
+          <select className={styles.lojaSelect} value={lojaId} onChange={e => trocarLoja(e.target.value)}>
+            {todasLojas.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+          </select>
+        ) : (
+          <span className={styles.lojaTag}>{lojaAtual.nome}</span>
+        )}
       </div>
 
       <div className={styles.body}>
