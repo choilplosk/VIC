@@ -56,28 +56,37 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const [config] = await sql`
-    SELECT validade_dias FROM configuracoes_sistema WHERE id = 1
-  `
-  const validade = Number(config?.validade_dias ?? 30)
-  const token  = gerarToken()
-  const expira = calcularExpiracao(validade)
+  try {
+    const [config] = await sql`
+      SELECT validade_dias FROM configuracoes_sistema WHERE id = 1
+    `
+    const validade = Number(config?.validade_dias ?? 30)
+    const token  = gerarToken()
+    const expira = calcularExpiracao(validade)
 
-  const [voucher] = await sql`
-    INSERT INTO vouchers (
-      token, cliente_nome, cliente_wpp, empresa_nome,
-      produtos, valor_compra, nivel, comercial_id, expira_em
-    ) VALUES (
-      ${token}, ${String(cliente_nome)}, ${null}, ${empresa_nome ? String(empresa_nome) : null},
-      ${(produtos as string[]) ?? []}, ${valor_compra ? Number(valor_compra) : null},
-      ${String(nivel)}, ${usuario.id}, ${expira}
-    )
-    RETURNING id, token, cliente_nome, empresa_nome, nivel, status, expira_em, criado_em
-  `
+    const produtosArr = Array.isArray(produtos) ? produtos as string[] : []
 
-  return NextResponse.json({
-    token,
-    voucher,
-    url: montarUrlVoucher(token)
-  }, { status: 201 })
+    const [voucher] = await sql`
+      INSERT INTO vouchers (
+        token, cliente_nome, cliente_wpp, empresa_nome,
+        produtos, valor_compra, nivel, comercial_id, expira_em
+      ) VALUES (
+        ${token},
+        ${String(cliente_nome)},
+        ${null},
+        ${empresa_nome ? String(empresa_nome) : null},
+        ${produtosArr},
+        ${valor_compra ? Number(valor_compra) : null},
+        ${String(nivel)}::tier_nivel,
+        ${usuario.id}::uuid,
+        ${expira}
+      )
+      RETURNING id, token, cliente_nome, empresa_nome, nivel::text, status::text, expira_em, criado_em
+    `
+
+    return NextResponse.json({ token, voucher, url: montarUrlVoucher(token) }, { status: 201 })
+  } catch (err) {
+    console.error('[VIC vouchers POST]', err)
+    return NextResponse.json({ error: 'Erro ao criar voucher', detail: String(err) }, { status: 500 })
+  }
 }
