@@ -120,6 +120,8 @@ export default async function DashboardPage() {
         servico:            String(r.servico),
         nivel:              String(r.nivel),
         agendamento_status: String(r.agendamento_status),
+        data:               r.data ? String(r.data).slice(0,10) : undefined,
+        hora:               r.hora ? String(r.hora).slice(0,5) : undefined,
         voucher_status:     String(r.voucher_status),
         loja_nome:          String(r.loja_nome),
         loja_bairro:        String(r.loja_bairro),
