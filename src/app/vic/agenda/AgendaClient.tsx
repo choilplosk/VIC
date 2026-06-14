@@ -453,43 +453,6 @@ export default function AgendaClient({
   )
 }
 
-      {modalBloquear && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'#fff',borderRadius:12,padding:24,width:340,boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
-            <h3 style={{fontSize:15,fontWeight:500,color:'#111',marginBottom:16}}>Bloquear período</h3>
-            <div style={{marginBottom:12}}>
-              <label style={{fontSize:11,color:'#999',display:'block',marginBottom:4}}>Data inicial</label>
-              <input type="date" className={styles.reagendarInput}
-                value={bloquearInicio} onChange={e => setBloquearInicio(e.target.value)} />
-            </div>
-            <div style={{marginBottom:16}}>
-              <label style={{fontSize:11,color:'#999',display:'block',marginBottom:4}}>Data final</label>
-              <input type="date" className={styles.reagendarInput}
-                value={bloquearFim} min={bloquearInicio} onChange={e => setBloquearFim(e.target.value)} />
-            </div>
-            <p style={{fontSize:11,color:'#C9A96E',marginBottom:16}}>
-              Todos os horários disponíveis neste período serão bloqueados.
-            </p>
-            <div style={{display:'flex',gap:8}}>
-              <button className={styles.reagendarConfirmar}
-                onClick={bloquearPeriodo}
-                disabled={!bloquearInicio || !bloquearFim || bloqueandoPeriodo}
-                style={{flex:1}}>
-                {bloqueandoPeriodo ? 'Bloqueando...' : 'Confirmar'}
-              </button>
-              <button onClick={() => setModalBloquear(false)}
-                style={{flex:1,background:'#fff',border:'1px solid #ddd',borderRadius:8,padding:10,cursor:'pointer',fontSize:13,color:'#666'}}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-
 function DetalheRow({ label, value }: { label: string; value: string }) {
   return (
     <div className={styles.detalheRow}>
