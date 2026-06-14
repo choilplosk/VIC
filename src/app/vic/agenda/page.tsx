@@ -23,14 +23,19 @@ export default async function AgendaPage() {
   const isAdmin = usuario.perfil === 'coordenadora'
 
   const todasLojas = await sql`
-    SELECT id, nome, bairro FROM lojas
+    SELECT id::TEXT AS id, nome, bairro FROM lojas
     WHERE tipo = 'vic' AND ativa = TRUE
     ORDER BY bairro, nome
   `
 
-  const lojaId = isAdmin
-    ? String(todasLojas[0]?.id ?? '')
-    : String(usuario.loja_id ?? '')
+  // Coordenadora: primeira loja da lista. Atendente: sua loja.
+  // Se loja_id for null por algum motivo, pega a primeira da lista.
+  const lojaIdRaw = isAdmin
+    ? todasLojas[0]?.id
+    : (usuario.loja_id ?? todasLojas[0]?.id)
+
+  if (!lojaIdRaw) redirect('/login')
+  const lojaId = String(lojaIdRaw)
 
   const hoje = new Date().toISOString().split('T')[0]
 
