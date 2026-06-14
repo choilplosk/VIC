@@ -122,6 +122,8 @@
 
 .recenteInfo { flex: 1; }
 .recenteNome { font-weight: 500; color: #111; }
+.recenteData { font-size: 11px; color: #bbb; margin-top: 2px; }
+
 .recenteMeta { font-size: 11px; color: #999; margin-top: 1px; }
 .recenteLoja { font-size: 11px; color: #999; min-width: 120px; }
 
