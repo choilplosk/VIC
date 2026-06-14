@@ -84,6 +84,10 @@ export default function AgendaClient({
 
   // Bloqueio de dia inteiro
   const [bloqueandoDia, setBloqueandoDia] = useState(false)
+  const [modalBloquear, setModalBloquear] = useState(false)
+  const [bloquearInicio, setBloquearInicio] = useState('')
+  const [bloquearFim, setBloquearFim] = useState('')
+  const [bloqueandoPeriodo, setBloqueandoPeriodo] = useState(false)
 
   const lojaAtual = todasLojas.find(l => l.id === lojaId) ?? {
     id: lojaId, nome: usuario.loja_nome, bairro: usuario.loja_bairro
@@ -169,6 +173,32 @@ export default function AgendaClient({
     setBloqueandoDia(false)
   }
 
+  async function bloquearPeriodo() {
+    if (!bloquearInicio || !bloquearFim) return
+    setBloqueandoPeriodo(true)
+    // Gera lista de datas entre inicio e fim
+    const datas: string[] = []
+    const cur = new Date(bloquearInicio + 'T12:00:00')
+    const fim = new Date(bloquearFim + 'T12:00:00')
+    while (cur <= fim) {
+      datas.push(cur.toISOString().split('T')[0])
+      cur.setDate(cur.getDate() + 1)
+    }
+    // Bloqueia cada dia
+    for (const d of datas) {
+      await fetch('/api/vic/horarios/bloqueios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loja_id: lojaId, data: d, horas: [] as string[], dia_inteiro: true }),
+      })
+    }
+    setBloqueandoPeriodo(false)
+    setModalBloquear(false)
+    setBloquearInicio('')
+    setBloquearFim('')
+    if (datas.includes(data)) carregar(data, lojaId)
+  }
+
   async function confirmarReagendamento() {
     if (!detalhe || !reData || !reHora) return
     setReLoading(true)
@@ -233,7 +263,13 @@ export default function AgendaClient({
               onClick={toggleBloquearDia}
               disabled={bloqueandoDia}
             >
-              {diaBloqueado ? '🔓 Desbloquear dia' : '📅 Bloquear dia inteiro'}
+              {diaBloqueado ? '🔓 Desbloquear dia' : '📅 Bloquear este dia'}
+            </button>
+            <button
+              className={styles.blockBtn}
+              onClick={() => setModalBloquear(true)}
+            >
+              📆 Bloquear período
             </button>
             <button
               className={`${styles.blockBtn} ${bloqueioMode ? styles.blockBtnOn : ''}`}
@@ -381,6 +417,38 @@ export default function AgendaClient({
 
         </div>
       </div>
+      {modalBloquear && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#fff',borderRadius:12,padding:24,width:340,boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
+            <h3 style={{fontSize:15,fontWeight:500,color:'#111',marginBottom:16}}>Bloquear período</h3>
+            <div style={{marginBottom:12}}>
+              <label style={{fontSize:11,color:'#999',display:'block',marginBottom:4}}>Data inicial</label>
+              <input type="date" className={styles.reagendarInput}
+                value={bloquearInicio} onChange={e => setBloquearInicio(e.target.value)} />
+            </div>
+            <div style={{marginBottom:16}}>
+              <label style={{fontSize:11,color:'#999',display:'block',marginBottom:4}}>Data final</label>
+              <input type="date" className={styles.reagendarInput}
+                value={bloquearFim} min={bloquearInicio} onChange={e => setBloquearFim(e.target.value)} />
+            </div>
+            <p style={{fontSize:11,color:'#C9A96E',marginBottom:16}}>
+              Todos os horários disponíveis neste período serão bloqueados.
+            </p>
+            <div style={{display:'flex',gap:8}}>
+              <button className={styles.reagendarConfirmar}
+                onClick={bloquearPeriodo}
+                disabled={!bloquearInicio || !bloquearFim || bloqueandoPeriodo}
+                style={{flex:1}}>
+                {bloqueandoPeriodo ? 'Bloqueando...' : 'Confirmar'}
+              </button>
+              <button onClick={() => setModalBloquear(false)}
+                style={{flex:1,background:'#fff',border:'1px solid #ddd',borderRadius:8,padding:10,cursor:'pointer',fontSize:13,color:'#666'}}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -390,6 +458,38 @@ function DetalheRow({ label, value }: { label: string; value: string }) {
     <div className={styles.detalheRow}>
       <span className={styles.detalheKey}>{label}</span>
       <span className={styles.detalheVal}>{value}</span>
+      {modalBloquear && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#fff',borderRadius:12,padding:24,width:340,boxShadow:'0 8px 32px rgba(0,0,0,0.18)'}}>
+            <h3 style={{fontSize:15,fontWeight:500,color:'#111',marginBottom:16}}>Bloquear período</h3>
+            <div style={{marginBottom:12}}>
+              <label style={{fontSize:11,color:'#999',display:'block',marginBottom:4}}>Data inicial</label>
+              <input type="date" className={styles.reagendarInput}
+                value={bloquearInicio} onChange={e => setBloquearInicio(e.target.value)} />
+            </div>
+            <div style={{marginBottom:16}}>
+              <label style={{fontSize:11,color:'#999',display:'block',marginBottom:4}}>Data final</label>
+              <input type="date" className={styles.reagendarInput}
+                value={bloquearFim} min={bloquearInicio} onChange={e => setBloquearFim(e.target.value)} />
+            </div>
+            <p style={{fontSize:11,color:'#C9A96E',marginBottom:16}}>
+              Todos os horários disponíveis neste período serão bloqueados.
+            </p>
+            <div style={{display:'flex',gap:8}}>
+              <button className={styles.reagendarConfirmar}
+                onClick={bloquearPeriodo}
+                disabled={!bloquearInicio || !bloquearFim || bloqueandoPeriodo}
+                style={{flex:1}}>
+                {bloqueandoPeriodo ? 'Bloqueando...' : 'Confirmar'}
+              </button>
+              <button onClick={() => setModalBloquear(false)}
+                style={{flex:1,background:'#fff',border:'1px solid #ddd',borderRadius:8,padding:10,cursor:'pointer',fontSize:13,color:'#666'}}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
