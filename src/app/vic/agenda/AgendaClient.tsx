@@ -27,7 +27,8 @@ interface Props {
   statsIniciais: Stats; dataInicial: string
 }
 
-const HOURS = [
+// Horários padrão — serão substituídos pelo horário real da loja
+const HOURS_DEFAULT = [
   '09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30',
   '13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30',
   '17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30',
@@ -80,6 +81,7 @@ export default function AgendaClient({
   const [reagendando, setReagendando]   = useState(false)
   const [reData, setReData]             = useState('')
   const [reHora, setReHora]             = useState('')
+  const [hours, setHours]               = useState<string[]>(HOURS_DEFAULT)
   const [reLoading, setReLoading]       = useState(false)
 
   // Bloqueio de dia inteiro
@@ -93,19 +95,27 @@ export default function AgendaClient({
     id: lojaId, nome: usuario.loja_nome, bairro: usuario.loja_bairro
   }
 
-  const diaBloqueado = HOURS.every(h => bloqueios.includes(h))
+  const diaBloqueado = hours.every(h => bloqueios.includes(h))
 
   const carregar = useCallback(async (novaData: string, novaLoja: string) => {
     setLoadingData(true)
-    const [ag, bl] = await Promise.all([
+    const dataObj = new Date(novaData + 'T12:00:00')
+    const dias = ['dom','seg','ter','qua','qui','sex','sab']
+    const diaSemana = dias[dataObj.getDay()]
+    const [ag, bl, slots] = await Promise.all([
       fetch(`/api/vic/agendamentos?loja_id=${novaLoja}&data=${novaData}`).then(r => r.json()),
       fetch(`/api/vic/agendamentos?loja_id=${novaLoja}&data=${novaData}`).then(r => r.json()),
+      fetch(`/api/vic/lojas/${novaLoja}/slots?data=${novaData}&dia=${diaSemana}`).then(r => r.json()).catch(() => ({ slots: [] })),
     ])
     setAgendamentos((ag.agendamentos ?? []).map((a: Record<string, unknown>) => ({
       ...a,
       hora: String(a.hora).slice(0, 5),
     })))
     setBloqueios((bl.bloqueios ?? []).map((b: Record<string, unknown>) => String(b.hora ?? '').slice(0, 5)))
+    // Atualizar horas com os slots reais da loja
+    if (slots.slots && slots.slots.length > 0) {
+      setHours(slots.slots.map((s: Record<string, unknown>) => String(s.hora)))
+    }
     setDetalhe(null)
     setReagendando(false)
     setLoadingData(false)
@@ -162,13 +172,13 @@ export default function AgendaClient({
     } else {
       // Bloquear todos os horários livres do dia
       const agPorHora = new Set(agendamentos.map(a => a.hora))
-      const horasLivres = HOURS.filter(h => !agPorHora.has(h))
+      const horasLivres = hours.filter(h => !agPorHora.has(h))
       await fetch('/api/vic/horarios/bloqueios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ loja_id: lojaId, data, horas: horasLivres }),
       })
-      setBloqueios(HOURS.filter(h => !agPorHora.has(h)))
+      setBloqueios(hours.filter(h => !agPorHora.has(h)))
     }
     setBloqueandoDia(false)
   }
@@ -215,12 +225,17 @@ export default function AgendaClient({
   }
 
   function wppConfirmar(ag: Agendamento) {
-    const num = (ag.loja_wpp ?? '').replace(/\D/g, '')
-    if (!num) return
     const msg = encodeURIComponent(
       `Olá, ${ag.cliente_nome}! Confirmamos seu agendamento no Studio Boti para ${ag.hora}. Serviço: ${ag.servico}. Aguardamos você! 🌿`
     )
-    window.open(`https://wa.me/55${num}?text=${msg}`, '_blank')
+    const num = (ag.loja_wpp ?? ag.cliente_wpp ?? '').replace(/\D/g, '')
+    if (num) {
+      window.open(`https://wa.me/55${num}?text=${msg}`, '_blank')
+    } else {
+      // Copia mensagem para área de transferência se não houver número
+      navigator.clipboard.writeText(decodeURIComponent(msg))
+      alert('Número não cadastrado. Mensagem copiada para a área de transferência.')
+    }
   }
 
   const agPorHora: Record<string, Agendamento> = {}
@@ -287,10 +302,10 @@ export default function AgendaClient({
             {loadingData && <div className={styles.loading}>Carregando...</div>}
             <div className={styles.grid}>
               <div className={styles.timeCol}>
-                {HOURS.map(h => <div key={h} className={styles.timeSlot}>{h}</div>)}
+                {hours.map(h => <div key={h} className={styles.timeSlot}>{h}</div>)}
               </div>
               <div className={styles.slotsCol}>
-                {HOURS.map(h => {
+                {hours.map(h => {
                   const ag = agPorHora[h]
                   const bloqueado = bloqueios.includes(h)
                   return (
@@ -396,7 +411,7 @@ export default function AgendaClient({
                         onChange={e => setReHora(e.target.value)}
                       >
                         <option value="">Selecione</option>
-                        {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                        {hours.map(h => <option key={h} value={h}>{h}</option>)}
                       </select>
                     </div>
                   </div>
