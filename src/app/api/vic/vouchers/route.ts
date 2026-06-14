@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       ) VALUES (
         ${token},
         ${String(cliente_nome)},
-        ${null},
+        ${''},
         ${empresa_nome ? String(empresa_nome) : null},
         ${produtosArr},
         ${valor_compra ? Number(valor_compra) : null},
