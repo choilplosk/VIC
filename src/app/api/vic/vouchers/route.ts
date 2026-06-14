@@ -71,13 +71,14 @@ export async function POST(req: NextRequest) {
       token, cliente_nome, cliente_wpp, empresa_nome,
       produtos, valor_compra, nivel, comercial_id, expira_em
     ) VALUES (
-      ${token}, ${cliente_nome}, ${cliente_wpp}, ${empresa_nome ?? null},
+      ${token}, ${cliente_nome}, ${cliente_wpp ?? null}, ${empresa_nome ?? null},
       ${produtos ?? []}, ${valor_compra ?? null}, ${nivel}, ${usuario.id}, ${expira}
     )
     RETURNING *
   `
 
   return NextResponse.json({
+    token,
     voucher,
     url: montarUrlVoucher(token)
   }, { status: 201 })
