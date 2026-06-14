@@ -22,28 +22,28 @@ export default async function AgendaPage() {
 
   const isAdmin = usuario.perfil === 'coordenadora'
 
-  // Coordenadora não tem loja_id fixo — começa na primeira loja VIC
-  const lojaId = isAdmin
-    ? await sql`SELECT id FROM lojas WHERE tipo = 'vic' AND ativa = TRUE ORDER BY bairro, nome LIMIT 1`
-        .then(r => String(r[0]?.id ?? ''))
-    : String(usuario.loja_id ?? '')
+  const todasLojas = await sql`
+    SELECT id, nome, bairro FROM lojas
+    WHERE tipo = 'vic' AND ativa = TRUE
+    ORDER BY bairro, nome
+  `
 
-  // Todas as lojas VIC (coordenadora precisa do select; atendente recebe array com 1 item)
-  const todasLojas = isAdmin
-    ? await sql`SELECT id, nome, bairro FROM lojas WHERE tipo = 'vic' AND ativa = TRUE ORDER BY bairro, nome`
-    : await sql`SELECT id, nome, bairro FROM lojas WHERE id = ${String(usuario.loja_id)} LIMIT 1`
+  // Coordenadora começa na primeira loja; atendente fica na sua loja
+  const lojaId = isAdmin
+    ? String(todasLojas[0]?.id ?? '')
+    : String(usuario.loja_id ?? '')
 
   const hoje = new Date().toISOString().split('T')[0]
 
   const agendamentos = await sql`
     SELECT * FROM v_agendamentos_completo
-    WHERE loja_id = ${lojaId} AND data = ${hoje}
+    WHERE loja_id = ${lojaId}::uuid AND data = ${hoje}::date
     ORDER BY hora ASC
   `
 
   const bloqueios = await sql`
     SELECT hora::TEXT AS hora FROM bloqueios_agenda
-    WHERE loja_id = ${lojaId} AND data = ${hoje}
+    WHERE loja_id = ${lojaId}::uuid AND data = ${hoje}::date
   `
 
   const [stats] = await sql`
@@ -53,7 +53,7 @@ export default async function AgendaPage() {
       COUNT(*) FILTER (WHERE status = 'concluido')      AS concluidos,
       COUNT(*) FILTER (WHERE status = 'nao_compareceu') AS faltas
     FROM agendamentos
-    WHERE loja_id = ${lojaId} AND data = ${hoje}
+    WHERE loja_id = ${lojaId}::uuid AND data = ${hoje}::date
   `
 
   return (
