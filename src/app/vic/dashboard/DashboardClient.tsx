@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import styles from './dashboard.module.css'
+import VicNav from '../VicNav'
 
-interface Usuario { id: string; nome: string }
+interface Usuario { id: string; nome: string; perfil: string }
 
 interface KPIs {
   vouchers_emitidos: number; agendamentos_realizados: number
@@ -118,17 +119,7 @@ export default function DashboardClient({
   return (
     <div className={styles.root}>
 
-      {/* TOPBAR */}
-      <div className={styles.topbar}>
-        <div className={styles.topbarLeft}>
-          <span className={styles.brand}>VIC <em>·</em> Studio boti</span>
-          <span className={styles.tag}>Coordenação</span>
-        </div>
-        <div className={styles.topbarUser}>
-          <div className={styles.avatar}>{iniciais}</div>
-          {usuario.nome.split(' ')[0]}
-        </div>
-      </div>
+      <VicNav perfil={usuario.perfil} nome={usuario.nome} />
 
       <div className={styles.body}>
 
