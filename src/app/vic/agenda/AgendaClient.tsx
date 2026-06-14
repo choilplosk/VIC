@@ -82,6 +82,16 @@ export default function AgendaClient({
   const [reData, setReData]             = useState('')
   const [reHora, setReHora]             = useState('')
   const [hours, setHours]               = useState<string[]>(HOURS_DEFAULT)
+
+  // Formulário de agendamento avulso
+  const [novoHora, setNovoHora]         = useState('')
+  const [novoPanel, setNovoPanel]       = useState(false)
+  const [novoNome, setNovoNome]         = useState('')
+  const [novoWpp, setNovoWpp]           = useState('')
+  const [novoEmpresa, setNovoEmpresa]   = useState('')
+  const [novoServico, setNovoServico]   = useState('')
+  const [novoLoading, setNovoLoading]   = useState(false)
+  const [novoErro, setNovoErro]         = useState('')
   const [reLoading, setReLoading]       = useState(false)
 
   // Bloqueio de dia inteiro
@@ -224,6 +234,45 @@ export default function AgendaClient({
     carregar(data, lojaId)
   }
 
+  async function criarAvulso() {
+    if (!novoNome || !novoServico || !novoHora) {
+      setNovoErro('Nome, serviço e horário são obrigatórios.')
+      return
+    }
+    setNovoLoading(true); setNovoErro('')
+    const res = await fetch('/api/vic/agendamentos/avulso', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        loja_id:            lojaId,
+        cliente_nome:       novoNome,
+        cliente_wpp:        novoWpp,
+        empresa_nome:       novoEmpresa,
+        servico:            novoServico,
+        data,
+        hora:               novoHora,
+      }),
+    })
+    const d = await res.json()
+    if (!res.ok) {
+      setNovoErro(d.error ?? 'Erro ao criar agendamento.')
+      setNovoLoading(false)
+      return
+    }
+    // Resetar e recarregar
+    setNovoPanel(false)
+    setNovoNome(''); setNovoWpp(''); setNovoEmpresa(''); setNovoServico(''); setNovoHora('')
+    setNovoLoading(false)
+    carregar(data, lojaId)
+  }
+
+  function abrirNovoPanel(hora: string) {
+    setNovoHora(hora)
+    setNovoNome(''); setNovoWpp(''); setNovoEmpresa(''); setNovoServico(''); setNovoErro('')
+    setNovoPanel(true)
+    setDetalhe(null)
+  }
+
   function wppConfirmar(ag: Agendamento) {
     const msg = encodeURIComponent(
       `Olá, ${ag.cliente_nome}! Confirmamos seu agendamento no Studio Boti para ${ag.hora}. Serviço: ${ag.servico}. Aguardamos você! 🌿`
@@ -325,6 +374,13 @@ export default function AgendaClient({
                           {ag.empresa_nome && <p className={styles.eventEmp}>{ag.empresa_nome}</p>}
                         </div>
                       )}
+                      {!ag && !bloqueado && (
+                        <button
+                          className={styles.slotNovoBtn}
+                          onClick={e => { e.stopPropagation(); abrirNovoPanel(h) }}
+                          title={`Novo agendamento às ${h}`}
+                        >+</button>
+                      )}
                       {bloqueado && !ag && (
                         <span className={styles.bloqueadoLabel}>Bloqueado</span>
                       )}
@@ -334,6 +390,50 @@ export default function AgendaClient({
               </div>
             </div>
           </div>
+
+          {/* PAINEL NOVO AGENDAMENTO */}
+          {novoPanel && !detalhe && (
+            <div className={styles.detalhe}>
+              <div className={styles.detalheHeader}>
+                <h3 className={styles.detalheTitle}>Novo agendamento · {novoHora}</h3>
+                <button className={styles.closeBtn} onClick={() => setNovoPanel(false)}>✕</button>
+              </div>
+              <div className={styles.novoForm}>
+                <label className={styles.novoLabel}>Nome do cliente *</label>
+                <input className={styles.novoInput} placeholder="Nome completo"
+                  value={novoNome} onChange={e => setNovoNome(e.target.value)} />
+
+                <label className={styles.novoLabel}>WhatsApp</label>
+                <input className={styles.novoInput} placeholder="(21) 99999-9999" type="tel"
+                  value={novoWpp} onChange={e => setNovoWpp(e.target.value)} />
+
+                <label className={styles.novoLabel}>Empresa</label>
+                <input className={styles.novoInput} placeholder="Opcional"
+                  value={novoEmpresa} onChange={e => setNovoEmpresa(e.target.value)} />
+
+                <label className={styles.novoLabel}>Serviço *</label>
+                <input className={styles.novoInput} placeholder="Ex: Maquiagem Express"
+                  value={novoServico} onChange={e => setNovoServico(e.target.value)} />
+
+                {novoErro && (
+                  <div className={styles.novoErro}>{novoErro}</div>
+                )}
+
+                <button
+                  className={styles.wppBtn}
+                  style={{ marginTop: 16 }}
+                  onClick={criarAvulso}
+                  disabled={novoLoading}
+                >
+                  {novoLoading ? 'Salvando...' : '✓ Confirmar agendamento'}
+                </button>
+                <button className={styles.reagendarBtn} style={{ marginTop: 8 }}
+                  onClick={() => setNovoPanel(false)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* PAINEL DE DETALHE */}
           {detalhe && (
