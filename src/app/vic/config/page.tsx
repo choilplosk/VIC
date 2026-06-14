@@ -16,7 +16,7 @@ export default async function ConfigPage() {
 
   if (!usuario) redirect('/login')
   // Apenas admin, coordenadora e loja acessam config
-  if (!['admin','coordenadora','loja','atendente'].includes(String(usuario.perfil))) redirect('/vic/agenda')
+  if (!['coordenadora','atendente','comercial'].includes(String(usuario.perfil))) redirect('/vic/agenda')
 
   const perfil = String(usuario.perfil)
   const lojaId = usuario.loja_id ? String(usuario.loja_id) : null
@@ -36,7 +36,7 @@ export default async function ConfigPage() {
   `
 
   // Admin/coordenadora vê todas as lojas; loja vê só a própria
-  const lojas = perfil === 'admin' || perfil === 'coordenadora'
+  const lojas = perfil === 'coordenadora'
     ? await sql`SELECT id, nome, bairro, endereco, tipo, whatsapp, ativa FROM lojas ORDER BY tipo, bairro, nome`
     : await sql`SELECT id, nome, bairro, endereco, tipo, whatsapp, ativa FROM lojas WHERE id = ${lojaId}`
 
@@ -48,7 +48,7 @@ export default async function ConfigPage() {
   `
 
   // Horários: admin/coordenadora vê todos; loja vê só o próprio
-  const horarios = perfil === 'admin' || perfil === 'coordenadora'
+  const horarios = perfil === 'coordenadora'
     ? await sql`SELECT loja_id, dia, hora_inicio, hora_fim, intervalo_min, ativo FROM horarios_loja ORDER BY loja_id, dia`
     : await sql`SELECT loja_id, dia, hora_inicio, hora_fim, intervalo_min, ativo FROM horarios_loja WHERE loja_id = ${lojaId} ORDER BY dia`
 
