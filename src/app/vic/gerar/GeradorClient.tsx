@@ -82,16 +82,17 @@ export default function GeradorClient({ usuario, tiers, vouchersIniciais }: Prop
         }),
       })
       const data = await res.json()
-      if (data.url || data.voucher) {
-        const url = data.url ?? `${window.location.origin}/vic/${data.voucher?.token}`
+      const voucherToken = data.voucher?.token
+      if (voucherToken) {
+        const url = `${window.location.origin}/vic/${voucherToken}`
         setLinkGerado(url)
         setVouchers(prev => [{
-          id:            data.voucher?.id ?? '',
+          id:            String(data.voucher?.id ?? ''),
           cliente_nome:  nome.trim(),
           empresa_nome:  empresa.trim(),
           nivel,
           status:        'pendente',
-          expira_em:     data.voucher?.expira_em ?? '',
+          expira_em:     String(data.voucher?.expira_em ?? ''),
           criado_em:     new Date().toISOString(),
           comercial_nome: usuario.nome,
         }, ...prev])
