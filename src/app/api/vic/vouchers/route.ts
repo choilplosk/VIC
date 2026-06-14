@@ -45,17 +45,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  if (usuario.perfil === 'atendente') {
-    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
-  }
 
   const body = await req.json()
   const { cliente_nome, cliente_wpp, empresa_nome, produtos, valor_compra, nivel } = body
 
   // Validação básica
-  if (!cliente_nome || !cliente_wpp || !nivel) {
+  if (!cliente_nome || !nivel) {
     return NextResponse.json(
-      { error: 'cliente_nome, cliente_wpp e nivel são obrigatórios' },
+      { error: 'cliente_nome e nivel são obrigatórios' },
       { status: 400 }
     )
   }
