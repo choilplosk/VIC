@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sql } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,32 +20,8 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
 
     if (data.valid && data.email) {
-      // Busca o perfil real do usuário na tabela usuarios_vic
-      const [usuario] = await sql`
-        SELECT perfil FROM usuarios_vic
-        WHERE email = ${data.email} AND ativo = TRUE
-        LIMIT 1
-      `
-
-      // Se não encontrar no VIC, usar mapeamento do portal como fallback
-      let vicPerfil = usuario?.perfil as string | undefined
-      if (!vicPerfil) {
-        const perfilMap: Record<string, string> = {
-          admin:   'coordenadora',
-          gerente: 'coordenadora',
-          loja:    'atendente',
-        }
-        vicPerfil = perfilMap[data.perfil] || 'atendente'
-      }
-
-      const perfilRoutes: Record<string, string> = {
-        coordenadora: '/vic/dashboard',
-        atendente:    '/vic/agenda',
-        comercial:    '/vic/gerar',
-      }
-      const dest = perfilRoutes[vicPerfil] || '/vic/agenda'
-
-      const response = NextResponse.redirect(new URL(dest, req.url))
+      // Redireciona para /vic — a página raiz decide para onde ir baseada no perfil real do banco
+      const response = NextResponse.redirect(new URL('/vic', req.url))
       response.cookies.set('user_email', data.email, {
         httpOnly: true,
         secure: true,
