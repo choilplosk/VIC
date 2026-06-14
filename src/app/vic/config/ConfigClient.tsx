@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import styles from './config.module.css'
 
-interface Usuario { id: string; nome: string }
+interface Usuario { id: string; nome: string; perfil: string; loja_id: string | null }
 interface Tier { nivel: string; valor_minimo: number; duracao_minutos: number; servicos: string[]; ativo: boolean }
 interface Sistema { validade_dias: number; aviso_expiracao_dias: number; reagendamentos_max: number }
 interface Loja { id: string; nome: string; bairro: string; endereco: string; tipo: string; whatsapp: string; ativa: boolean }
@@ -20,19 +20,36 @@ const TIER_LABEL: Record<string, string> = { bronze:'Bronze', prata:'Prata', our
 const TIER_COLOR: Record<string, string> = { bronze:'#CD7F32', prata:'#9a9a9a', ouro:'#C9A96E', diamante:'#4a90c4' }
 const DIAS = ['seg','ter','qua','qui','sex','sab','dom']
 const DIAS_LABEL: Record<string, string> = { seg:'Seg', ter:'Ter', qua:'Qua', qui:'Qui', sex:'Sex', sab:'Sáb', dom:'Dom' }
-const PERFIS = ['comercial','atendente','coordenadora']
+const PERFIS = ['admin','loja','comercial','atendente','coordenadora']
 
 export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, lojasIniciais, usuariosIniciais, horariosIniciais }: Props) {
-  const [painel, setPainel]     = useState('tiers')
-  const [tiers, setTiers]       = useState<Tier[]>(tiersIniciais)
-  const [sistema, setSistema]   = useState<Sistema>(sistemaInicial)
-  const [lojas, setLojas]       = useState<Loja[]>(lojasIniciais)
-  const [usuarios, setUsuarios] = useState<UsuarioVIC[]>(usuariosIniciais)
+  const isAdmin = usuario.perfil === 'admin' || usuario.perfil === 'coordenadora'
+
+  // Abas disponíveis por perfil
+  const navItems = [
+    ...(isAdmin ? [{ id: 'tiers',   icon: '💎', label: 'Níveis de serviço' }] : []),
+    { id: 'horarios', icon: '⏰', label: 'Horários' },
+    { id: 'lojas',    icon: '🏪', label: 'Lojas' },
+    ...(isAdmin ? [
+      { id: 'perfis',  icon: '👥', label: 'Perfis de acesso' },
+      { id: 'sistema', icon: '⚙️', label: 'Voucher & sistema' },
+    ] : []),
+  ]
+
+  const [painel, setPainel]       = useState(navItems[0].id)
+  const [tiers, setTiers]         = useState<Tier[]>(tiersIniciais)
+  const [sistema, setSistema]     = useState<Sistema>(sistemaInicial)
+  const [lojas, setLojas]         = useState<Loja[]>(lojasIniciais)
+  const [usuarios, setUsuarios]   = useState<UsuarioVIC[]>(usuariosIniciais)
   const [svcInputs, setSvcInputs] = useState<Record<string, string>>({})
-  const [lojaHorario, setLojaHorario] = useState(lojasIniciais.find(l => l.tipo === 'vic')?.id ?? '')
-  const [horarios, setHorarios] = useState<Horario[]>(horariosIniciais)
-  const [toast, setToast]       = useState('')
-  const [saving, setSaving]     = useState(false)
+  const [lojaHorario, setLojaHorario] = useState(
+    isAdmin
+      ? (lojasIniciais.find(l => l.tipo === 'vic')?.id ?? '')
+      : (usuario.loja_id ?? '')
+  )
+  const [horarios, setHorarios]   = useState<Horario[]>(horariosIniciais)
+  const [toast, setToast]         = useState('')
+  const [saving, setSaving]       = useState(false)
 
   const iniciais = usuario.nome.split(' ').map(n => n[0]).slice(0, 2).join('')
 
@@ -76,7 +93,11 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
 
   async function salvarPerfil(id: string, perfil: string) {
     setSaving(true)
-    // Atualiza localmente — API de usuários seria adicionada na próxima iteração
+    await fetch('/api/vic/usuarios', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, perfil }),
+    })
     setUsuarios(prev => prev.map(u => u.id === id ? { ...u, perfil } : u))
     setSaving(false)
     showToast('Perfil atualizado!')
@@ -108,8 +129,8 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
       loja_id:       lojaHorario,
       dia,
       hora_inicio:   atual?.hora_inicio ?? '09:00',
-      hora_fim:      atual?.hora_fim ?? '18:00',
-      intervalo_min: atual?.intervalo_min ?? 60,
+      hora_fim:      atual?.hora_fim ?? '22:00',
+      intervalo_min: atual?.intervalo_min ?? 30,
       ativo:         atual?.ativo ?? true,
       [campo]:       valor,
     }
@@ -118,17 +139,13 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
       if (existe >= 0) { const next = [...prev]; next[existe] = novo; return next }
       return [...prev, novo]
     })
-    // Persiste via API (implementar endpoint de horários na próxima iteração)
+    await fetch('/api/vic/horarios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novo),
+    })
     showToast('Horário salvo!')
   }
-
-  const navItems = [
-    { id: 'tiers',   icon: '💎', label: 'Níveis de serviço' },
-    { id: 'lojas',   icon: '🏪', label: 'Lojas' },
-    { id: 'horarios',icon: '⏰', label: 'Horários' },
-    { id: 'perfis',  icon: '👥', label: 'Perfis de acesso' },
-    { id: 'sistema', icon: '⚙️', label: 'Voucher & sistema' },
-  ]
 
   return (
     <div className={styles.root}>
@@ -142,6 +159,7 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
         <div className={styles.topbarUser}>
           <div className={styles.avatar}>{iniciais}</div>
           {usuario.nome.split(' ')[0]}
+          <span className={styles.perfilBadge}>{isAdmin ? 'Admin' : 'Loja'}</span>
         </div>
       </div>
 
@@ -149,7 +167,7 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
 
         {/* SIDEBAR */}
         <div className={styles.sidebar}>
-          <p className={styles.sidebarLabel}>Sistema</p>
+          <p className={styles.sidebarLabel}>{isAdmin ? 'Sistema' : 'Minha loja'}</p>
           {navItems.map(n => (
             <button
               key={n.id}
@@ -164,8 +182,8 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
         {/* CONTEÚDO */}
         <div className={styles.content}>
 
-          {/* TIERS */}
-          {painel === 'tiers' && (
+          {/* TIERS — só admin */}
+          {painel === 'tiers' && isAdmin && (
             <>
               <h2 className={styles.panelTitle}>Níveis de serviço</h2>
               <p className={styles.panelSub}>Configure o valor mínimo de compra e os serviços de cada nível.</p>
@@ -216,61 +234,22 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
             </>
           )}
 
-          {/* LOJAS */}
-          {painel === 'lojas' && (
-            <>
-              <h2 className={styles.panelTitle}>Lojas</h2>
-              <p className={styles.panelSub}>Ative lojas no VIC e configure o WhatsApp de cada unidade.</p>
-              <div className={styles.card}>
-                {lojas.map((l, i) => (
-                  <div key={l.id} className={`${styles.lojaRow} ${i === lojas.length - 1 ? styles.lojaRowLast : ''}`}>
-                    <div className={styles.lojaInfo}>
-                      <p className={styles.lojaNome}>{l.nome}</p>
-                      <p className={styles.lojaAddr}>{l.endereco}</p>
-                    </div>
-                    <span className={`${styles.tipoPill} ${l.tipo === 'vic' ? styles.tipoVic : styles.tipoAtacado}`}>
-                      {l.tipo === 'vic' ? 'VIC' : 'Atacado'}
-                    </span>
-                    {l.tipo === 'vic' && (
-                      <>
-                        <input
-                          className={styles.wppInput}
-                          placeholder="WhatsApp da loja"
-                          value={l.whatsapp}
-                          onChange={e => setLojas(prev => prev.map(x => x.id === l.id ? { ...x, whatsapp: e.target.value } : x))}
-                        />
-                        <div
-                          className={`${styles.toggle} ${l.ativa ? styles.toggleOn : ''}`}
-                          onClick={() => {
-                            const nova = { ...l, ativa: !l.ativa }
-                            setLojas(prev => prev.map(x => x.id === l.id ? nova : x))
-                            salvarLoja(nova)
-                          }}
-                        >
-                          <div className={styles.toggleKnob} />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* HORÁRIOS */}
+          {/* HORÁRIOS — todos os perfis, loja vê só a própria */}
           {painel === 'horarios' && (
             <>
               <h2 className={styles.panelTitle}>Horários de atendimento</h2>
-              <p className={styles.panelSub}>Configure os dias e horários de cada loja.</p>
+              <p className={styles.panelSub}>Configure os dias e horários de funcionamento.</p>
               <div className={styles.card}>
-                <div className={styles.field}>
-                  <label className={styles.label}>Loja</label>
-                  <select className={styles.input} value={lojaHorario} onChange={e => setLojaHorario(e.target.value)}>
-                    {lojas.filter(l => l.tipo === 'vic').map(l => (
-                      <option key={l.id} value={l.id}>{l.nome}</option>
-                    ))}
-                  </select>
-                </div>
+                {isAdmin && (
+                  <div className={styles.field}>
+                    <label className={styles.label}>Loja</label>
+                    <select className={styles.input} value={lojaHorario} onChange={e => setLojaHorario(e.target.value)}>
+                      {lojas.filter(l => l.tipo === 'vic').map(l => (
+                        <option key={l.id} value={l.id}>{l.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className={styles.label} style={{ marginBottom: 8 }}>Dias de atendimento</div>
                 <div className={styles.diasGrid}>
                   {DIAS.map(d => {
@@ -288,22 +267,22 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
                 </div>
                 <div className={styles.grid2}>
                   <div className={styles.field}>
-                    <label className={styles.label}>Horário de início</label>
+                    <label className={styles.label}>Abertura</label>
                     <input type="time" className={styles.input}
                       value={getHorarioLoja('seg')?.hora_inicio ?? '09:00'}
                       onChange={e => DIAS.forEach(d => salvarHorario(d, 'hora_inicio', e.target.value))} />
                   </div>
                   <div className={styles.field}>
-                    <label className={styles.label}>Horário de encerramento</label>
+                    <label className={styles.label}>Encerramento</label>
                     <input type="time" className={styles.input}
-                      value={getHorarioLoja('seg')?.hora_fim ?? '18:00'}
+                      value={getHorarioLoja('seg')?.hora_fim ?? '22:00'}
                       onChange={e => DIAS.forEach(d => salvarHorario(d, 'hora_fim', e.target.value))} />
                   </div>
                 </div>
                 <div className={styles.field}>
                   <label className={styles.label}>Intervalo entre atendimentos</label>
                   <select className={styles.input}
-                    value={getHorarioLoja('seg')?.intervalo_min ?? 60}
+                    value={getHorarioLoja('seg')?.intervalo_min ?? 30}
                     onChange={e => DIAS.forEach(d => salvarHorario(d, 'intervalo_min', Number(e.target.value)))}>
                     <option value={30}>30 minutos</option>
                     <option value={60}>60 minutos</option>
@@ -317,15 +296,61 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
             </>
           )}
 
-          {/* PERFIS */}
-          {painel === 'perfis' && (
+          {/* LOJAS */}
+          {painel === 'lojas' && (
+            <>
+              <h2 className={styles.panelTitle}>{isAdmin ? 'Lojas' : 'Minha loja'}</h2>
+              <p className={styles.panelSub}>Configure o WhatsApp{isAdmin ? ' e ative lojas no VIC' : ' da sua loja'}.</p>
+              <div className={styles.card}>
+                {lojas.map((l, i) => (
+                  <div key={l.id} className={`${styles.lojaRow} ${i === lojas.length - 1 ? styles.lojaRowLast : ''}`}>
+                    <div className={styles.lojaInfo}>
+                      <p className={styles.lojaNome}>{l.nome}</p>
+                      <p className={styles.lojaAddr}>{l.endereco}</p>
+                    </div>
+                    {isAdmin && (
+                      <span className={`${styles.tipoPill} ${l.tipo === 'vic' ? styles.tipoVic : styles.tipoAtacado}`}>
+                        {l.tipo === 'vic' ? 'VIC' : 'Atacado'}
+                      </span>
+                    )}
+                    {l.tipo === 'vic' && (
+                      <>
+                        <input
+                          className={styles.wppInput}
+                          placeholder="WhatsApp da loja"
+                          value={l.whatsapp}
+                          onChange={e => setLojas(prev => prev.map(x => x.id === l.id ? { ...x, whatsapp: e.target.value } : x))}
+                          onBlur={() => salvarLoja(l)}
+                        />
+                        {isAdmin && (
+                          <div
+                            className={`${styles.toggle} ${l.ativa ? styles.toggleOn : ''}`}
+                            onClick={() => {
+                              const nova = { ...l, ativa: !l.ativa }
+                              setLojas(prev => prev.map(x => x.id === l.id ? nova : x))
+                              salvarLoja(nova)
+                            }}
+                          >
+                            <div className={styles.toggleKnob} />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* PERFIS — só admin */}
+          {painel === 'perfis' && isAdmin && (
             <>
               <h2 className={styles.panelTitle}>Perfis de acesso</h2>
               <p className={styles.panelSub}>Defina o nível de acesso de cada usuário no sistema VIC.</p>
               <div className={styles.grid3} style={{ marginBottom: '1rem' }}>
-                <InfoCard title="Comercial"    desc="Gera vouchers, vê histórico próprio" />
-                <InfoCard title="Atendente"    desc="Agenda da sua loja, confirma agendamentos" />
-                <InfoCard title="Coordenadora" desc="Acesso total — todas as lojas e configurações" />
+                <InfoCard title="Admin"    desc="Dashboard, todas as lojas e configurações completas" />
+                <InfoCard title="Loja"     desc="Agenda e configurações da própria loja" />
+                <InfoCard title="Comercial" desc="Emite vouchers para clientes" />
               </div>
               <div className={styles.card}>
                 {usuarios.map(u => (
@@ -348,8 +373,8 @@ export default function ConfigClient({ usuario, tiersIniciais, sistemaInicial, l
             </>
           )}
 
-          {/* SISTEMA */}
-          {painel === 'sistema' && (
+          {/* SISTEMA — só admin */}
+          {painel === 'sistema' && isAdmin && (
             <>
               <h2 className={styles.panelTitle}>Voucher & sistema</h2>
               <p className={styles.panelSub}>Configure as regras globais de validade e reagendamento.</p>
