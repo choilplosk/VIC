@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sql } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,12 +21,23 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
 
     if (data.valid && data.email) {
-      const perfilMap: Record<string, string> = {
-        admin:   'coordenadora',
-        gerente: 'coordenadora',
-        loja:    'atendente',
+      // Busca o perfil real do usuário na tabela usuarios_vic
+      const [usuario] = await sql`
+        SELECT perfil FROM usuarios_vic
+        WHERE email = ${data.email} AND ativo = TRUE
+        LIMIT 1
+      `
+
+      // Se não encontrar no VIC, usar mapeamento do portal como fallback
+      let vicPerfil = usuario?.perfil as string | undefined
+      if (!vicPerfil) {
+        const perfilMap: Record<string, string> = {
+          admin:   'coordenadora',
+          gerente: 'coordenadora',
+          loja:    'atendente',
+        }
+        vicPerfil = perfilMap[data.perfil] || 'atendente'
       }
-      const vicPerfil = perfilMap[data.perfil] || 'atendente'
 
       const perfilRoutes: Record<string, string> = {
         coordenadora: '/vic/dashboard',
