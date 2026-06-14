@@ -4,13 +4,10 @@ import { redirect } from 'next/navigation'
 import GeradorClient from './GeradorClient'
 
 export default async function GeradorPage() {
-  // Valida acesso via cookie do portal
   const cookieStore = await cookies()
   const email = cookieStore.get('user_email')?.value
-
   if (!email) redirect('/login')
 
-  // Busca usuário VIC
   const [usuario] = await sql`
     SELECT id, nome, perfil FROM usuarios_vic
     WHERE email = ${email} AND ativo = TRUE
@@ -18,9 +15,10 @@ export default async function GeradorPage() {
   `
 
   if (!usuario) redirect('/login')
-  if (usuario.perfil === 'atendente') redirect('/vic/agenda')
 
-  // Busca configurações de tier
+  // Todos os perfis podem acessar o emissor de voucher
+  // (coordenadora, atendente, comercial)
+
   const tiers = await sql`
     SELECT nivel, valor_minimo, duracao_minutos, servicos
     FROM configuracoes_tier
@@ -34,7 +32,6 @@ export default async function GeradorPage() {
       END
   `
 
-  // Busca vouchers recentes do usuário (ou todos se coordenadora)
   const vouchers = usuario.perfil === 'coordenadora'
     ? await sql`
         SELECT v.*, u.nome AS comercial_nome
