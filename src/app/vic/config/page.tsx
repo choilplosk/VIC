@@ -9,12 +9,17 @@ export default async function ConfigPage() {
   if (!email) redirect('/login')
 
   const [usuario] = await sql`
-    SELECT id, nome, perfil FROM usuarios_vic
-    WHERE email = ${email} AND ativo = TRUE LIMIT 1
+    SELECT u.id, u.nome, u.perfil, u.loja_id
+    FROM usuarios_vic u
+    WHERE u.email = ${email} AND u.ativo = TRUE LIMIT 1
   `
 
   if (!usuario) redirect('/login')
-  if (usuario.perfil !== 'coordenadora') redirect('/vic/agenda')
+  // Apenas admin, coordenadora e loja acessam config
+  if (!['admin','coordenadora','loja','atendente'].includes(String(usuario.perfil))) redirect('/vic/agenda')
+
+  const perfil = String(usuario.perfil)
+  const lojaId = usuario.loja_id ? String(usuario.loja_id) : null
 
   const tiers = await sql`
     SELECT nivel, valor_minimo, duracao_minutos, servicos, ativo
@@ -30,10 +35,10 @@ export default async function ConfigPage() {
     FROM configuracoes_sistema WHERE id = 1
   `
 
-  const lojas = await sql`
-    SELECT id, nome, bairro, endereco, tipo, whatsapp, ativa
-    FROM lojas ORDER BY tipo, bairro, nome
-  `
+  // Admin/coordenadora vê todas as lojas; loja vê só a própria
+  const lojas = perfil === 'admin' || perfil === 'coordenadora'
+    ? await sql`SELECT id, nome, bairro, endereco, tipo, whatsapp, ativa FROM lojas ORDER BY tipo, bairro, nome`
+    : await sql`SELECT id, nome, bairro, endereco, tipo, whatsapp, ativa FROM lojas WHERE id = ${lojaId}`
 
   const usuarios = await sql`
     SELECT u.id, u.nome, u.email, u.perfil, u.ativo, l.nome AS loja_nome
@@ -42,14 +47,14 @@ export default async function ConfigPage() {
     ORDER BY u.nome
   `
 
-  const horarios = await sql`
-    SELECT loja_id, dia, hora_inicio, hora_fim, intervalo_min, ativo
-    FROM horarios_loja ORDER BY loja_id, dia
-  `
+  // Horários: admin/coordenadora vê todos; loja vê só o próprio
+  const horarios = perfil === 'admin' || perfil === 'coordenadora'
+    ? await sql`SELECT loja_id, dia, hora_inicio, hora_fim, intervalo_min, ativo FROM horarios_loja ORDER BY loja_id, dia`
+    : await sql`SELECT loja_id, dia, hora_inicio, hora_fim, intervalo_min, ativo FROM horarios_loja WHERE loja_id = ${lojaId} ORDER BY dia`
 
   return (
     <ConfigClient
-      usuario={{ id: String(usuario.id), nome: String(usuario.nome) }}
+      usuario={{ id: String(usuario.id), nome: String(usuario.nome), perfil, loja_id: lojaId }}
       tiersIniciais={tiers.map(t => ({
         nivel:           String(t.nivel),
         valor_minimo:    Number(t.valor_minimo),
