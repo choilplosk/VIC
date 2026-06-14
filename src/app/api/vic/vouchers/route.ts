@@ -3,8 +3,6 @@ import { sql } from '@/lib/db'
 import { getUsuarioVIC } from '@/lib/auth'
 import { gerarToken, calcularExpiracao, montarUrlVoucher } from '@/lib/utils'
 
-// GET /api/vic/vouchers
-// Lista vouchers do comercial logado (ou todos, se coordenadora)
 export async function GET(req: NextRequest) {
   const usuario = await getUsuarioVIC(req)
   if (!usuario) {
@@ -16,7 +14,6 @@ export async function GET(req: NextRequest) {
   const limite = parseInt(searchParams.get('limite') ?? '20')
   const offset = (pagina - 1) * limite
 
-  // Coordenadora vê todos; comercial vê apenas os seus
   const rows = usuario.perfil === 'coordenadora'
     ? await sql`
         SELECT v.*, u.nome AS comercial_nome
@@ -37,19 +34,21 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ vouchers: rows, pagina, limite })
 }
 
-// POST /api/vic/vouchers
-// Cria um novo voucher e retorna o link exclusivo
 export async function POST(req: NextRequest) {
   const usuario = await getUsuarioVIC(req)
   if (!usuario) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
+  let body: Record<string, unknown>
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
+  }
 
-  const body = await req.json()
-  const { cliente_nome, cliente_wpp, empresa_nome, produtos, valor_compra, nivel } = body
+  const { cliente_nome, empresa_nome, produtos, valor_compra, nivel } = body
 
-  // Validação básica
   if (!cliente_nome || !nivel) {
     return NextResponse.json(
       { error: 'cliente_nome e nivel são obrigatórios' },
@@ -57,24 +56,23 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Busca configuração do tier para calcular expiração
   const [config] = await sql`
     SELECT validade_dias FROM configuracoes_sistema WHERE id = 1
   `
-  const validade = config?.validade_dias ?? 30
-
-  const token   = gerarToken()
-  const expira  = calcularExpiracao(validade)
+  const validade = Number(config?.validade_dias ?? 30)
+  const token  = gerarToken()
+  const expira = calcularExpiracao(validade)
 
   const [voucher] = await sql`
     INSERT INTO vouchers (
       token, cliente_nome, cliente_wpp, empresa_nome,
       produtos, valor_compra, nivel, comercial_id, expira_em
     ) VALUES (
-      ${token}, ${cliente_nome}, ${cliente_wpp ?? null}, ${empresa_nome ?? null},
-      ${produtos ?? []}, ${valor_compra ?? null}, ${nivel}, ${usuario.id}, ${expira}
+      ${token}, ${String(cliente_nome)}, ${null}, ${empresa_nome ? String(empresa_nome) : null},
+      ${(produtos as string[]) ?? []}, ${valor_compra ? Number(valor_compra) : null},
+      ${String(nivel)}, ${usuario.id}, ${expira}
     )
-    RETURNING *
+    RETURNING id, token, cliente_nome, empresa_nome, nivel, status, expira_em, criado_em
   `
 
   return NextResponse.json({
